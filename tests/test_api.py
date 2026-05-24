@@ -1,29 +1,35 @@
 """Test FeeScout API locally: python3 -m pytest tests/ -v"""
-import sys
 import os
+import sys
+
+import pytest
+from fastapi.testclient import TestClient
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "api"))
 sys.path.insert(0, os.path.join(HERE, ".."))
 
-from index import app, init_db, get_db, hash_password, verify_password, generate_api_key
-from fastapi.testclient import TestClient
-
-client = TestClient(app)
+from index import app, get_db, generate_api_key, hash_password, init_db, verify_password
 
 
-def test_health():
+@pytest.fixture()
+def client():
+    return TestClient(app)
+
+
+def test_health(client):
     resp = client.get("/api/health")
     assert resp.status_code == 200
     assert resp.json()["status"] == "healthy"
 
 
-def test_root():
+def test_root(client):
     resp = client.get("/")
     assert resp.status_code == 200
     assert resp.json()["service"] == "FeeScout API"
 
 
-def test_signup():
+def test_signup(client):
     import uuid
     email = f"test_{uuid.uuid4().hex[:8]}@example.com"
     resp = client.post("/api/auth/signup", json={"email": email, "password": "testpass123"})
@@ -32,10 +38,9 @@ def test_signup():
     assert data["success"] is True
     assert data["api_key"].startswith("fs_")
     assert data["tier"] == "free"
-    return email
 
 
-def test_login():
+def test_login(client):
     import uuid
     email = f"test_{uuid.uuid4().hex[:8]}@example.com"
     # Sign up first
@@ -46,7 +51,7 @@ def test_login():
     assert resp.json()["success"] is True
 
 
-def test_login_wrong_password():
+def test_login_wrong_password(client):
     import uuid
     email = f"test_{uuid.uuid4().hex[:8]}@example.com"
     client.post("/api/auth/signup", json={"email": email, "password": "testpass123"})
@@ -54,12 +59,12 @@ def test_login_wrong_password():
     assert resp.status_code == 401
 
 
-def test_get_me_unauthenticated():
+def test_get_me_unauthenticated(client):
     resp = client.get("/api/auth/me")
     assert resp.status_code == 401
 
 
-def test_dashboard_unauthenticated():
+def test_dashboard_unauthenticated(client):
     resp = client.get("/api/dashboard")
     assert resp.status_code == 401
 
@@ -77,7 +82,7 @@ def test_api_key_generation():
     assert len(key) > 20
 
 
-def test_signup_duplicate_email():
+def test_signup_duplicate_email(client):
     import uuid
     email = f"test_{uuid.uuid4().hex[:8]}@example.com"
     client.post("/api/auth/signup", json={"email": email, "password": "testpass123"})
@@ -85,7 +90,7 @@ def test_signup_duplicate_email():
     assert resp.status_code == 409
 
 
-def test_gas_fees_endpoint():
+def test_gas_fees_endpoint(client):
     resp = client.get("/api/gas-fees/latest")
     # Should return 200 even without Blockchair key (empty data)
     assert resp.status_code == 200

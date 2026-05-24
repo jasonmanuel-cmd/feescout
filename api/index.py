@@ -675,8 +675,13 @@ async def dashboard_data(request: Request):
 
 
 # ---------------------------------------------------------------------------
-# Health
+# Root / Health
 # ---------------------------------------------------------------------------
+@app.get("/")
+async def root():
+    return {"service": "FeeScout API", "version": "2.1.0", "status": "ok"}
+
+
 @app.get("/api/health")
 async def health_check():
     return {"status": "healthy", "service": "FeeScout API", "version": "2.1.0"}
