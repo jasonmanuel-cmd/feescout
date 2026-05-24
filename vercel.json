@@ -7,12 +7,28 @@
     {
       "src": "*.{html,png}",
       "use": "@vercel/static"
+    },
+    {
+      "src": "dashboard.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "templates/**",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
       "dest": "api/index.py"
+    },
+    {
+      "src": "/dashboard.html",
+      "dest": "dashboard.html"
+    },
+    {
+      "src": "/templates/(.*)",
+      "dest": "templates/$1"
     },
     {
       "src": "/",
