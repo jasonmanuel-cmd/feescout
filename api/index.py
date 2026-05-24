@@ -124,10 +124,20 @@ def init_db():
             status_code INTEGER
         )
     """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS password_resets (
+            token TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            created_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            used INTEGER DEFAULT 0
+        )
+    """)
     cur.execute("CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_users_api_key ON users(api_key)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_usage_user_ts ON usage_log(user_id, ts)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_resets_token ON password_resets(token)")
     conn.commit()
     cur.close()
     conn.close()
@@ -341,6 +351,15 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    password: str
+
+
 # ---------------------------------------------------------------------------
 # Auth routes
 # ---------------------------------------------------------------------------
@@ -444,6 +463,95 @@ async def logout(request: Request, response: Response):
         conn.close()
     response.delete_cookie(SESSION_COOKIE, path="/")
     return {"success": True}
+
+
+RESET_EMAIL_HTML = """
+<div style="font-family:Inter,sans-serif;max-width:600px;margin:0 auto;padding:40px 20px;">
+  <h1 style="color:#00D68F;">Reset Your Password</h1>
+  <p style="color:#333;font-size:16px;line-height:1.6;">
+    We received a request to reset your FeeScout password. Click the button below —
+    this link expires in <strong>1 hour</strong>.
+  </p>
+  <div style="text-align:center;margin:32px 0;">
+    <a href="{reset_url}" style="background:#00D68F;color:#000;padding:14px 32px;border-radius:8px;
+       text-decoration:none;font-weight:700;font-size:16px;display:inline-block;">
+      Reset Password
+    </a>
+  </div>
+  <p style="color:#999;font-size:13px;">
+    If you didn't request this, you can safely ignore this email. Your password won't change.
+  </p>
+  <hr style="border:none;border-top:1px solid #eee;margin:30px 0;">
+  <p style="color:#999;font-size:13px;">FeeScout — Find the cheapest chain, every time.</p>
+</div>
+"""
+
+
+@app.post("/api/auth/forgot-password")
+async def forgot_password(req: ForgotPasswordRequest, request: Request):
+    """Send a password-reset email. Always returns 200 to avoid email enumeration."""
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM users WHERE email = %s", (req.email.lower(),))
+    row = cur.fetchone()
+
+    if row:
+        token = secrets.token_urlsafe(48)
+        now = datetime.now(timezone.utc)
+        expires = now + timedelta(hours=1)
+        cur.execute(
+            "INSERT INTO password_resets (token, user_id, created_at, expires_at) VALUES (%s, %s, %s, %s)",
+            (token, row["id"], now.isoformat(), expires.isoformat()),
+        )
+        conn.commit()
+
+        base_url = str(request.base_url).rstrip("/")
+        reset_url = f"{base_url}/dashboard?reset_token={token}"
+        send_email(
+            req.email,
+            "Reset Your FeeScout Password",
+            RESET_EMAIL_HTML.format(reset_url=reset_url),
+        )
+
+    cur.close()
+    conn.close()
+    # Always 200 — don't reveal whether the email exists
+    return {"success": True, "message": "If that email is registered, a reset link is on its way."}
+
+
+@app.post("/api/auth/reset-password")
+async def reset_password(req: ResetPasswordRequest):
+    if len(req.password) < 8:
+        raise HTTPException(400, "Password must be at least 8 characters")
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT * FROM password_resets WHERE token = %s AND used = 0 AND expires_at > %s",
+        (req.token, datetime.now(timezone.utc).isoformat()),
+    )
+    reset_row = cur.fetchone()
+
+    if not reset_row:
+        cur.close()
+        conn.close()
+        raise HTTPException(400, "Reset link is invalid or has expired")
+
+    new_hash = hash_password(req.password)
+    now = datetime.now(timezone.utc).isoformat()
+    cur.execute(
+        "UPDATE users SET password_hash = %s, updated_at = %s WHERE id = %s",
+        (new_hash, now, reset_row["user_id"]),
+    )
+    cur.execute(
+        "UPDATE password_resets SET used = 1 WHERE token = %s",
+        (req.token,),
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return {"success": True, "message": "Password updated. You can now log in."}
 
 
 @app.get("/api/auth/me")
