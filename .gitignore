@@ -1,8 +1,20 @@
-__pycache__/
-*.pyc
-*.pyo
+# Environment
 .env
-.vercel
-venv/
-env/
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Misc
+agst.py
