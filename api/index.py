@@ -6,9 +6,8 @@ from fastapi import FastAPI, Response, Request, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from pydantic import BaseModel, EmailStr
-import psycopg2
-import psycopg2.extras
-import psycopg2.errorcodes
+import pg8000.native
+import pg8000
 import requests
 import os
 import json
@@ -77,10 +76,36 @@ _fee_cache: dict = {"data": None, "timestamp": None, "ttl_seconds": 60}
 # ---------------------------------------------------------------------------
 # Database helpers
 # ---------------------------------------------------------------------------
-def get_db() -> psycopg2.extensions.connection:
+def _parse_db_url(url: str) -> dict:
+    """Parse a postgres:// URL into pg8000 connect kwargs."""
+    from urllib.parse import urlparse
+    p = urlparse(url)
+    return {
+        "host": p.hostname,
+        "port": p.port or 5432,
+        "database": p.path.lstrip("/"),
+        "user": p.username,
+        "password": p.password,
+        "ssl_context": True,  # Supabase requires SSL
+    }
+
+
+def get_db():
     """Open a new Postgres connection using the DATABASE_URL env var."""
-    conn = psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
+    kwargs = _parse_db_url(DATABASE_URL)
+    conn = pg8000.native.Connection(**kwargs)
     return conn
+
+
+def _row_to_dict(columns, row):
+    """Convert a pg8000 row + column list into a dict."""
+    if row is None:
+        return None
+    return dict(zip(columns, row))
+
+
+def _rows_to_dicts(columns, rows):
+    return [dict(zip(columns, r)) for r in rows]
 
 
 def _is_https(request: Request) -> bool:
@@ -91,8 +116,7 @@ def _is_https(request: Request) -> bool:
 def init_db():
     """Create tables if they don't exist. Safe to call on every cold start."""
     conn = get_db()
-    cur = conn.cursor()
-    cur.execute("""
+    conn.run("""
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
             email TEXT UNIQUE NOT NULL,
@@ -106,7 +130,7 @@ def init_db():
             subscribed_at TEXT
         )
     """)
-    cur.execute("""
+    conn.run("""
         CREATE TABLE IF NOT EXISTS sessions (
             token TEXT PRIMARY KEY,
             user_id INTEGER NOT NULL REFERENCES users(id),
@@ -114,7 +138,7 @@ def init_db():
             expires_at TEXT NOT NULL
         )
     """)
-    cur.execute("""
+    conn.run("""
         CREATE TABLE IF NOT EXISTS usage_log (
             id SERIAL PRIMARY KEY,
             user_id INTEGER REFERENCES users(id),
@@ -124,7 +148,7 @@ def init_db():
             status_code INTEGER
         )
     """)
-    cur.execute("""
+    conn.run("""
         CREATE TABLE IF NOT EXISTS password_resets (
             token TEXT PRIMARY KEY,
             user_id INTEGER NOT NULL REFERENCES users(id),
@@ -133,13 +157,11 @@ def init_db():
             used INTEGER DEFAULT 0
         )
     """)
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token)")
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_users_api_key ON users(api_key)")
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_usage_user_ts ON usage_log(user_id, ts)")
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_resets_token ON password_resets(token)")
-    conn.commit()
-    cur.close()
+    conn.run("CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token)")
+    conn.run("CREATE INDEX IF NOT EXISTS idx_users_api_key ON users(api_key)")
+    conn.run("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
+    conn.run("CREATE INDEX IF NOT EXISTS idx_usage_user_ts ON usage_log(user_id, ts)")
+    conn.run("CREATE INDEX IF NOT EXISTS idx_resets_token ON password_resets(token)")
     conn.close()
 
 
@@ -182,13 +204,10 @@ def create_session(user_id: int) -> str:
     now = datetime.now(timezone.utc)
     expires = now + timedelta(days=SESSION_DAYS)
     conn = get_db()
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO sessions (token, user_id, created_at, expires_at) VALUES (%s, %s, %s, %s)",
-        (token, user_id, now.isoformat(), expires.isoformat()),
+    conn.run(
+        "INSERT INTO sessions (token, user_id, created_at, expires_at) VALUES (:token, :uid, :created, :expires)",
+        token=token, uid=user_id, created=now.isoformat(), expires=expires.isoformat(),
     )
-    conn.commit()
-    cur.close()
     conn.close()
     return token
 
@@ -210,29 +229,25 @@ def get_user_from_session(request: Request) -> Optional[dict]:
     if not token:
         return None
     conn = get_db()
-    cur = conn.cursor()
-    cur.execute(
+    rows = conn.run(
         """SELECT u.* FROM users u
            JOIN sessions s ON s.user_id = u.id
-           WHERE s.token = %s AND s.expires_at > %s""",
-        (token, datetime.now(timezone.utc).isoformat()),
+           WHERE s.token = :token AND s.expires_at > :now""",
+        token=token, now=datetime.now(timezone.utc).isoformat(),
     )
-    row = cur.fetchone()
-    cur.close()
+    cols = [c["name"] for c in conn.columns]
     conn.close()
-    return dict(row) if row else None
+    return _row_to_dict(cols, rows[0] if rows else None)
 
 
 def get_user_from_api_key(api_key: str) -> Optional[dict]:
     if not api_key:
         return None
     conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM users WHERE api_key = %s", (api_key,))
-    row = cur.fetchone()
-    cur.close()
+    rows = conn.run("SELECT * FROM users WHERE api_key = :key", key=api_key)
+    cols = [c["name"] for c in conn.columns]
     conn.close()
-    return dict(row) if row else None
+    return _row_to_dict(cols, rows[0] if rows else None)
 
 
 def get_current_user(request: Request) -> Optional[dict]:
@@ -250,15 +265,13 @@ def check_rate_limit(user: dict) -> bool:
     limit = RATE_LIMITS.get(tier, 100)
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     conn = get_db()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT COUNT(*) as cnt FROM usage_log WHERE user_id = %s AND ts LIKE %s",
-        (user["id"], f"{today}%"),
+    rows = conn.run(
+        "SELECT COUNT(*) AS cnt FROM usage_log WHERE user_id = :uid AND ts LIKE :today",
+        uid=user["id"], today=f"{today}%",
     )
-    row = cur.fetchone()
-    cur.close()
     conn.close()
-    return row["cnt"] < limit
+    cnt = rows[0][0] if rows else 0
+    return cnt < limit
 
 
 def log_request(user_id: Optional[int], api_key: Optional[str], endpoint: str, status_code: int):
@@ -266,13 +279,11 @@ def log_request(user_id: Optional[int], api_key: Optional[str], endpoint: str, s
         return
     try:
         conn = get_db()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO usage_log (user_id, api_key, endpoint, ts, status_code) VALUES (%s, %s, %s, %s, %s)",
-            (user_id, api_key, endpoint, datetime.now(timezone.utc).isoformat(), status_code),
+        conn.run(
+            "INSERT INTO usage_log (user_id, api_key, endpoint, ts, status_code) VALUES (:uid, :key, :ep, :ts, :sc)",
+            uid=user_id, key=api_key, ep=endpoint,
+            ts=datetime.now(timezone.utc).isoformat(), sc=status_code,
         )
-        conn.commit()
-        cur.close()
         conn.close()
     except Exception as e:
         print(f"[FeeScout] log_request error: {e}")
@@ -281,14 +292,11 @@ def log_request(user_id: Optional[int], api_key: Optional[str], endpoint: str, s
 def ensure_master_tier(user: dict):
     if user["email"] in MASTER_EMAILS and user["tier"] != "trader":
         conn = get_db()
-        cur = conn.cursor()
         now = datetime.now(timezone.utc).isoformat()
-        cur.execute(
-            "UPDATE users SET tier = 'trader', updated_at = %s WHERE id = %s",
-            (now, user["id"]),
+        conn.run(
+            "UPDATE users SET tier = 'trader', updated_at = :now WHERE id = :uid",
+            now=now, uid=user["id"],
         )
-        conn.commit()
-        cur.close()
         conn.close()
         user["tier"] = "trader"
 
@@ -374,22 +382,19 @@ async def signup(req: SignupRequest, response: Response, request: Request):
     initial_tier = "trader" if req.email in MASTER_EMAILS else "free"
 
     conn = get_db()
-    cur = conn.cursor()
     try:
-        cur.execute(
-            "INSERT INTO users (email, password_hash, api_key, tier, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s)",
-            (req.email, pw_hash, api_key, initial_tier, now, now),
+        conn.run(
+            "INSERT INTO users (email, password_hash, api_key, tier, created_at, updated_at) VALUES (:email, :pw, :key, :tier, :now, :now2)",
+            email=req.email, pw=pw_hash, key=api_key, tier=initial_tier, now=now, now2=now,
         )
-        conn.commit()
-        cur.execute("SELECT id FROM users WHERE api_key = %s", (api_key,))
-        user_id = cur.fetchone()["id"]
-    except psycopg2.errors.UniqueViolation:
-        conn.rollback()
-        cur.close()
+        rows = conn.run("SELECT id FROM users WHERE api_key = :key", key=api_key)
+        user_id = rows[0][0]
+    except Exception as e:
         conn.close()
-        raise HTTPException(409, "An account with this email already exists")
+        if "unique" in str(e).lower() or "duplicate" in str(e).lower():
+            raise HTTPException(409, "An account with this email already exists")
+        raise HTTPException(500, "Could not create account")
     finally:
-        cur.close()
         conn.close()
 
     token = create_session(user_id)
@@ -409,40 +414,25 @@ async def signup(req: SignupRequest, response: Response, request: Request):
 @app.post("/api/auth/login")
 async def login(req: LoginRequest, response: Response, request: Request):
     conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM users WHERE email = %s", (req.email,))
-    row = cur.fetchone()
-    cur.close()
+    rows = conn.run("SELECT * FROM users WHERE email = :email", email=req.email.lower())
+    cols = [c["name"] for c in conn.columns]
     conn.close()
 
-    if not row or not verify_password(req.password, row["password_hash"]):
+    user = _row_to_dict(cols, rows[0] if rows else None)
+    if not user or not verify_password(req.password, user["password_hash"]):
         raise HTTPException(401, "Invalid email or password")
 
-    user = dict(row)
+    now = datetime.now(timezone.utc).isoformat()
 
     # Auto-promote master emails on login
-    if req.email in MASTER_EMAILS and user["tier"] != "trader":
-        now = datetime.now(timezone.utc).isoformat()
+    if req.email.lower() in MASTER_EMAILS and user["tier"] != "trader":
         conn = get_db()
-        cur = conn.cursor()
-        cur.execute(
-            "UPDATE users SET tier = 'trader', updated_at = %s WHERE id = %s",
-            (now, user["id"]),
-        )
-        conn.commit()
-        cur.close()
+        conn.run("UPDATE users SET tier = 'trader', updated_at = :now WHERE id = :uid", now=now, uid=user["id"])
         conn.close()
         user["tier"] = "trader"
 
-    now = datetime.now(timezone.utc).isoformat()
     conn = get_db()
-    cur = conn.cursor()
-    cur.execute(
-        "UPDATE users SET last_login = %s, updated_at = %s WHERE id = %s",
-        (now, now, user["id"]),
-    )
-    conn.commit()
-    cur.close()
+    conn.run("UPDATE users SET last_login = :now, updated_at = :now2 WHERE id = :uid", now=now, now2=now, uid=user["id"])
     conn.close()
 
     token = create_session(user["id"])
@@ -456,10 +446,7 @@ async def logout(request: Request, response: Response):
     token = request.cookies.get(SESSION_COOKIE)
     if token:
         conn = get_db()
-        cur = conn.cursor()
-        cur.execute("DELETE FROM sessions WHERE token = %s", (token,))
-        conn.commit()
-        cur.close()
+        conn.run("DELETE FROM sessions WHERE token = :token", token=token)
         conn.close()
     response.delete_cookie(SESSION_COOKIE, path="/")
     return {"success": True}
@@ -491,31 +478,25 @@ RESET_EMAIL_HTML = """
 async def forgot_password(req: ForgotPasswordRequest, request: Request):
     """Send a password-reset email. Always returns 200 to avoid email enumeration."""
     conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT id FROM users WHERE email = %s", (req.email.lower(),))
-    row = cur.fetchone()
+    rows = conn.run("SELECT id FROM users WHERE email = :email", email=req.email.lower())
+    conn.close()
 
-    if row:
+    if rows:
+        user_id = rows[0][0]
         token = secrets.token_urlsafe(48)
         now = datetime.now(timezone.utc)
         expires = now + timedelta(hours=1)
-        cur.execute(
-            "INSERT INTO password_resets (token, user_id, created_at, expires_at) VALUES (%s, %s, %s, %s)",
-            (token, row["id"], now.isoformat(), expires.isoformat()),
+        conn = get_db()
+        conn.run(
+            "INSERT INTO password_resets (token, user_id, created_at, expires_at) VALUES (:token, :uid, :created, :expires)",
+            token=token, uid=user_id, created=now.isoformat(), expires=expires.isoformat(),
         )
-        conn.commit()
+        conn.close()
 
         base_url = str(request.base_url).rstrip("/")
         reset_url = f"{base_url}/dashboard?reset_token={token}"
-        send_email(
-            req.email,
-            "Reset Your FeeScout Password",
-            RESET_EMAIL_HTML.format(reset_url=reset_url),
-        )
+        send_email(req.email, "Reset Your FeeScout Password", RESET_EMAIL_HTML.format(reset_url=reset_url))
 
-    cur.close()
-    conn.close()
-    # Always 200 — don't reveal whether the email exists
     return {"success": True, "message": "If that email is registered, a reset link is on its way."}
 
 
@@ -525,30 +506,22 @@ async def reset_password(req: ResetPasswordRequest):
         raise HTTPException(400, "Password must be at least 8 characters")
 
     conn = get_db()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT * FROM password_resets WHERE token = %s AND used = 0 AND expires_at > %s",
-        (req.token, datetime.now(timezone.utc).isoformat()),
+    rows = conn.run(
+        "SELECT * FROM password_resets WHERE token = :token AND used = 0 AND expires_at > :now",
+        token=req.token, now=datetime.now(timezone.utc).isoformat(),
     )
-    reset_row = cur.fetchone()
+    cols = [c["name"] for c in conn.columns]
+    conn.close()
 
+    reset_row = _row_to_dict(cols, rows[0] if rows else None)
     if not reset_row:
-        cur.close()
-        conn.close()
         raise HTTPException(400, "Reset link is invalid or has expired")
 
     new_hash = hash_password(req.password)
     now = datetime.now(timezone.utc).isoformat()
-    cur.execute(
-        "UPDATE users SET password_hash = %s, updated_at = %s WHERE id = %s",
-        (new_hash, now, reset_row["user_id"]),
-    )
-    cur.execute(
-        "UPDATE password_resets SET used = 1 WHERE token = %s",
-        (req.token,),
-    )
-    conn.commit()
-    cur.close()
+    conn = get_db()
+    conn.run("UPDATE users SET password_hash = :h, updated_at = :now WHERE id = :uid", h=new_hash, now=now, uid=reset_row["user_id"])
+    conn.run("UPDATE password_resets SET used = 1 WHERE token = :token", token=req.token)
     conn.close()
 
     return {"success": True, "message": "Password updated. You can now log in."}
@@ -564,19 +537,11 @@ async def me(request: Request):
 
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     conn = get_db()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT COUNT(*) as cnt FROM usage_log WHERE user_id = %s AND ts LIKE %s",
-        (user["id"], f"{today}%"),
-    )
-    usage_today = cur.fetchone()["cnt"]
-    cur.execute(
-        "SELECT COUNT(*) as cnt FROM usage_log WHERE user_id = %s",
-        (user["id"],),
-    )
-    usage_total = cur.fetchone()["cnt"]
-    cur.close()
+    r1 = conn.run("SELECT COUNT(*) FROM usage_log WHERE user_id = :uid AND ts LIKE :today", uid=user["id"], today=f"{today}%")
+    r2 = conn.run("SELECT COUNT(*) FROM usage_log WHERE user_id = :uid", uid=user["id"])
     conn.close()
+    usage_today = r1[0][0] if r1 else 0
+    usage_total = r2[0][0] if r2 else 0
 
     limit = RATE_LIMITS.get(user["tier"], 100)
 
@@ -603,15 +568,11 @@ async def rotate_key(request: Request):
 
     new_key = generate_api_key()
     conn = get_db()
-    cur = conn.cursor()
-    cur.execute(
-        "UPDATE users SET api_key = %s, updated_at = %s WHERE id = %s",
-        (new_key, datetime.now(timezone.utc).isoformat(), user["id"]),
+    conn.run(
+        "UPDATE users SET api_key = :key, updated_at = :now WHERE id = :uid",
+        key=new_key, now=datetime.now(timezone.utc).isoformat(), uid=user["id"],
     )
-    conn.commit()
-    cur.close()
     conn.close()
-
     return {"success": True, "api_key": new_key}
 
 
@@ -785,28 +746,17 @@ async def dashboard_data(request: Request):
     thirty_days_ago = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
 
     conn = get_db()
-    cur = conn.cursor()
-
-    cur.execute(
-        "SELECT COUNT(*) as cnt FROM usage_log WHERE user_id = %s AND ts LIKE %s",
-        (user["id"], f"{today}%"),
+    r1 = conn.run("SELECT COUNT(*) FROM usage_log WHERE user_id = :uid AND ts LIKE :today", uid=user["id"], today=f"{today}%")
+    r2 = conn.run("SELECT COUNT(*) FROM usage_log WHERE user_id = :uid", uid=user["id"])
+    r3 = conn.run(
+        "SELECT DATE(ts) AS day, COUNT(*) AS cnt FROM usage_log WHERE user_id = :uid AND ts > :ago GROUP BY day ORDER BY day",
+        uid=user["id"], ago=thirty_days_ago,
     )
-    usage_today = cur.fetchone()["cnt"]
-
-    cur.execute(
-        "SELECT COUNT(*) as cnt FROM usage_log WHERE user_id = %s",
-        (user["id"],),
-    )
-    usage_total = cur.fetchone()["cnt"]
-
-    cur.execute(
-        "SELECT DATE(ts) as day, COUNT(*) as cnt FROM usage_log WHERE user_id = %s AND ts > %s GROUP BY day ORDER BY day",
-        (user["id"], thirty_days_ago),
-    )
-    daily_usage = cur.fetchall()
-
-    cur.close()
     conn.close()
+
+    usage_today = r1[0][0] if r1 else 0
+    usage_total = r2[0][0] if r2 else 0
+    daily_usage = [{"day": str(row[0]), "count": row[1]} for row in r3]
 
     limit = RATE_LIMITS.get(user["tier"], 100)
     usage_pct = min(100, round((usage_today / limit) * 100)) if limit > 0 else 0
@@ -825,7 +775,7 @@ async def dashboard_data(request: Request):
             "total": usage_total,
             "daily_limit": limit,
             "usage_pct": usage_pct,
-            "daily_breakdown": [{"day": str(r["day"]), "count": r["cnt"]} for r in daily_usage],
+            "daily_breakdown": daily_usage,
         },
         "estimated_savings_usd": estimated_savings,
         "upgrade_cta": usage_pct >= 80 and user["tier"] == "free",
@@ -859,25 +809,24 @@ def _upgrade_user_by_email(email: str, new_tier: str, square_customer_id: Option
     if not email:
         return False
     conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT id, tier FROM users WHERE email = %s", (email.lower(),))
-    row = cur.fetchone()
+    rows = conn.run("SELECT id, tier FROM users WHERE email = :email", email=email.lower())
+    cols = [c["name"] for c in conn.columns]
+    conn.close()
+
+    row = _row_to_dict(cols, rows[0] if rows else None)
     if not row:
-        cur.close()
-        conn.close()
         print(f"[FeeScout] Square webhook: no account for {email} — tier upgrade skipped")
         return False
 
     now = datetime.now(timezone.utc).isoformat()
-    cur.execute(
+    conn = get_db()
+    conn.run(
         """UPDATE users
-           SET tier = %s, updated_at = %s, subscribed_at = %s,
-               square_customer_id = COALESCE(%s, square_customer_id)
-           WHERE id = %s""",
-        (new_tier, now, now, square_customer_id, row["id"]),
+           SET tier = :tier, updated_at = :now, subscribed_at = :now2,
+               square_customer_id = COALESCE(:cid, square_customer_id)
+           WHERE id = :uid""",
+        tier=new_tier, now=now, now2=now, cid=square_customer_id, uid=row["id"],
     )
-    conn.commit()
-    cur.close()
     conn.close()
     print(f"[FeeScout] Upgraded {email} → {new_tier}")
     return True
@@ -947,9 +896,7 @@ async def health_check():
     if DATABASE_URL:
         try:
             conn = get_db()
-            cur = conn.cursor()
-            cur.execute("SELECT 1")
-            cur.close()
+            conn.run("SELECT 1")
             conn.close()
             db_ok = True
         except Exception:
