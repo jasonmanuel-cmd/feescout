@@ -17,7 +17,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 import hmac
 
-app = FastAPI(title="FeeScout API", version="2.0.0")
+app = FastAPI(title="FeeScout API", version="2.1.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -34,8 +34,11 @@ BLOCKCHAIR_API_KEY = os.getenv("BLOCKCHAIR_API_KEY", "")
 DATABASE_PATH = "/tmp/feescout.db"  # Vercel writable directory
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
 RESEND_FROM = os.getenv("RESEND_FROM", "FeeScout <onboarding@feescout.com>")
-SQUARE_HOBBYIST_LINK = os.getenv("SQUARE_HOBBYIST_LINK", "")
-SQUARE_TRADER_LINK = os.getenv("SQUARE_TRADER_LINK", "")
+SQUARE_HOBBYIST_LINK = os.getenv("SQUARE_HOBBYIST_LINK", "https://square.link/u/YjHtGg2s")
+SQUARE_TRADER_LINK = os.getenv("SQUARE_TRADER_LINK", "https://square.link/u/bW26nrZE")
+
+# Master account email — always gets trader tier
+MASTER_EMAILS = {"blunt95@gmail.com"}
 
 # Rate limits per tier (requests per day)
 RATE_LIMITS = {
@@ -70,6 +73,12 @@ def get_db() -> sqlite3.Connection:
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
     return conn
+
+
+def _is_https(request: Request) -> bool:
+    """Check if the request came over HTTPS."""
+    proto = request.headers.get("x-forwarded-proto", "")
+    return proto == "https" or request.url.scheme == "https"
 
 
 def init_db():
@@ -158,6 +167,19 @@ def create_session(user_id: int) -> str:
     return token
 
 
+def set_session_cookie(response: Response, token: str, request: Request):
+    """Set session cookie — secure flag only on HTTPS."""
+    response.set_cookie(
+        key=SESSION_COOKIE,
+        value=token,
+        httponly=True,
+        secure=_is_https(request),
+        samesite="lax",
+        max_age=SESSION_DAYS * 86400,
+        path="/",
+    )
+
+
 def get_user_from_session(request: Request) -> Optional[dict]:
     token = request.cookies.get(SESSION_COOKIE)
     if not token:
@@ -219,6 +241,17 @@ def log_request(user_id: Optional[int], api_key: Optional[str], endpoint: str, s
     conn.close()
 
 
+def ensure_master_tier(user: dict):
+    """Auto-promote master emails to trader tier."""
+    if user["email"] in MASTER_EMAILS and user["tier"] != "trader":
+        conn = get_db()
+        now = datetime.now(timezone.utc).isoformat()
+        conn.execute("UPDATE users SET tier = 'trader', updated_at = ? WHERE id = ?", (now, user["id"]))
+        conn.commit()
+        conn.close()
+        user["tier"] = "trader"
+
+
 # ---------------------------------------------------------------------------
 # Email helper (Resend)
 # ---------------------------------------------------------------------------
@@ -269,7 +302,7 @@ curl -H "X-API-Key: {api_key}" \\
 # ---------------------------------------------------------------------------
 class SignupRequest(BaseModel):
     email: EmailStr
-    password: str  # min 8 chars enforced in validation
+    password: str
 
 
 class LoginRequest(BaseModel):
@@ -281,7 +314,7 @@ class LoginRequest(BaseModel):
 # Auth routes
 # ---------------------------------------------------------------------------
 @app.post("/api/auth/signup")
-async def signup(req: SignupRequest, response: Response):
+async def signup(req: SignupRequest, response: Response, request: Request):
     if len(req.password) < 8:
         raise HTTPException(400, "Password must be at least 8 characters")
 
@@ -289,11 +322,14 @@ async def signup(req: SignupRequest, response: Response):
     pw_hash = hash_password(req.password)
     now = datetime.now(timezone.utc).isoformat()
 
+    # Auto-promote master emails to trader tier
+    initial_tier = "trader" if req.email in MASTER_EMAILS else "free"
+
     conn = get_db()
     try:
         conn.execute(
-            "INSERT INTO users (email, password_hash, api_key, tier, created_at, updated_at) VALUES (?, ?, ?, 'free', ?, ?)",
-            (req.email, pw_hash, api_key, now, now),
+            "INSERT INTO users (email, password_hash, api_key, tier, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (req.email, pw_hash, api_key, initial_tier, now, now),
         )
         conn.commit()
         user_id = conn.execute("SELECT id FROM users WHERE api_key = ?", (api_key,)).fetchone()["id"]
@@ -304,29 +340,23 @@ async def signup(req: SignupRequest, response: Response):
 
     # Create session
     token = create_session(user_id)
-    response.set_cookie(
-        key=SESSION_COOKIE,
-        value=token,
-        httponly=True,
-        secure=True,
-        samesite="lax",
-        max_age=SESSION_DAYS * 86400,
-    )
+    set_session_cookie(response, token, request)
 
     # Send welcome email
+    limit = RATE_LIMITS.get(initial_tier, 100)
     send_email(
         req.email,
         "Welcome to FeeScout — Your API Key",
-        SIGNUP_EMAIL_HTML.format(api_key=api_key, tier="Free", limit=100),
+        SIGNUP_EMAIL_HTML.format(api_key=api_key, tier=initial_tier.capitalize(), limit=limit),
     )
 
     log_request(user_id, api_key, "/api/auth/signup", 200)
 
-    return {"success": True, "api_key": api_key, "tier": "free"}
+    return {"success": True, "api_key": api_key, "tier": initial_tier}
 
 
 @app.post("/api/auth/login")
-async def login(req: LoginRequest, response: Response):
+async def login(req: LoginRequest, response: Response, request: Request):
     conn = get_db()
     row = conn.execute("SELECT * FROM users WHERE email = ?", (req.email,)).fetchone()
     conn.close()
@@ -334,25 +364,29 @@ async def login(req: LoginRequest, response: Response):
     if not row or not verify_password(req.password, row["password_hash"]):
         raise HTTPException(401, "Invalid email or password")
 
+    user = dict(row)
+
+    # Auto-promote master emails on login
+    if req.email in MASTER_EMAILS and user["tier"] != "trader":
+        now = datetime.now(timezone.utc).isoformat()
+        conn = get_db()
+        conn.execute("UPDATE users SET tier = 'trader', updated_at = ? WHERE id = ?", (now, user["id"]))
+        conn.commit()
+        conn.close()
+        user["tier"] = "trader"
+
     # Update last login
     now = datetime.now(timezone.utc).isoformat()
     conn = get_db()
-    conn.execute("UPDATE users SET last_login = ?, updated_at = ? WHERE id = ?", (now, now, row["id"]))
+    conn.execute("UPDATE users SET last_login = ?, updated_at = ? WHERE id = ?", (now, now, user["id"]))
     conn.commit()
     conn.close()
 
     # Create session
-    token = create_session(row["id"])
-    response.set_cookie(
-        key=SESSION_COOKIE,
-        value=token,
-        httponly=True,
-        secure=True,
-        samesite="lax",
-        max_age=SESSION_DAYS * 86400,
-    )
+    token = create_session(user["id"])
+    set_session_cookie(response, token, request)
 
-    return {"success": True, "tier": row["tier"], "api_key": row["api_key"]}
+    return {"success": True, "tier": user["tier"], "api_key": user["api_key"]}
 
 
 @app.post("/api/auth/logout")
@@ -363,7 +397,7 @@ async def logout(request: Request, response: Response):
         conn.execute("DELETE FROM sessions WHERE token = ?", (token,))
         conn.commit()
         conn.close()
-    response.delete_cookie(SESSION_COOKIE)
+    response.delete_cookie(SESSION_COOKIE, path="/")
     return {"success": True}
 
 
@@ -372,6 +406,8 @@ async def me(request: Request):
     user = get_current_user(request)
     if not user:
         raise HTTPException(401, "Not authenticated")
+
+    ensure_master_tier(user)
 
     # Get today's usage
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -578,38 +614,6 @@ async def get_comparison(request: Request, amount: float = 1000):
 
 
 # ---------------------------------------------------------------------------
-# Checkout endpoints
-# ---------------------------------------------------------------------------
-PLAN_PRICES = {
-    "hobbyist": {"name": "Hobbyist", "price": 39, "description": "All chains + alerts", "square_link_env": "SQUARE_HOBBYIST_LINK"},
-    "trader": {"name": "Trader", "price": 99, "description": "Real-time + API + webhooks", "square_link_env": "SQUARE_TRADER_LINK"},
-}
-
-
-@app.post("/api/create-checkout")
-async def create_checkout(request: Request):
-    form = await request.form()
-    plan_key = form.get("plan", "hobbyist").lower()
-    plan = PLAN_PRICES.get(plan_key)
-    if not plan:
-        raise HTTPException(400, "Invalid plan")
-
-    link = os.getenv(plan["square_link_env"], "")
-    if link:
-        return Response(status_code=303, headers={"Location": link})
-
-    return HTMLResponse(content=f"""
-    <html><body style="font-family:Inter,sans-serif;text-align:center;padding:80px;">
-    <h1>FeeScout Checkout</h1>
-    <h2>{plan['name']} Plan - ${plan['price']}/mo</h2>
-    <p>{plan['description']}</p>
-    <p style="color:#666;margin-top:40px;">Square payments coming soon. Set {plan['square_link_env']} env var to enable.</p>
-    <a href="/" style="color:#3B82F6;">Back to FeeScout</a>
-    </body></html>
-    """)
-
-
-# ---------------------------------------------------------------------------
 # User dashboard data
 # ---------------------------------------------------------------------------
 @app.get("/api/dashboard")
@@ -617,6 +621,8 @@ async def dashboard_data(request: Request):
     user = get_current_user(request)
     if not user:
         raise HTTPException(401, "Not authenticated")
+
+    ensure_master_tier(user)
 
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     conn = get_db()
@@ -646,7 +652,7 @@ async def dashboard_data(request: Request):
     usage_pct = min(100, round((usage_today / limit) * 100)) if limit > 0 else 0
 
     # Estimate gas savings (simple heuristic based on usage)
-    estimated_savings = round(usage_total * 0.15, 2)  # $0.15 avg savings per API call
+    estimated_savings = round(usage_total * 0.15, 2)
 
     return {
         "success": True,
@@ -664,47 +670,17 @@ async def dashboard_data(request: Request):
             "daily_breakdown": [{"day": r["day"], "count": r["cnt"]} for r in daily_usage],
         },
         "estimated_savings_usd": estimated_savings,
-        "upgrade_cta": usage_pct >= 80,
+        "upgrade_cta": usage_pct >= 80 and user["tier"] == "free",
     }
 
 
 # ---------------------------------------------------------------------------
-# Serve frontend
+# Health
 # ---------------------------------------------------------------------------
-@app.get("/landing", response_class=HTMLResponse)
-async def serve_landing():
-    html_path = os.path.join(os.path.dirname(__file__), "..", "index.html")
-    if os.path.exists(html_path):
-        with open(html_path, "r", encoding="utf-8") as f:
-            return HTMLResponse(content=f.read())
-    return HTMLResponse(content="<h1>FeeScout</h1><p>API is running.</p>")
-
-
-# Root redirects to landing
-@app.get("/")
-async def root():
-    return {
-        "service": "FeeScout API",
-        "status": "healthy",
-        "version": "2.0.0",
-        "tagline": "Find the cheapest chain, every time",
-        "docs": "/docs",
-        "endpoints": [
-            "/api/gas-fees/latest",
-            "/api/gas-fees/cheapest",
-            "/api/gas-fees/comparison",
-            "/api/auth/signup",
-            "/api/auth/login",
-            "/api/auth/me",
-            "/api/dashboard",
-        ],
-    }
-
-
 @app.get("/api/health")
 async def health_check():
-    return {"status": "healthy", "service": "FeeScout API", "version": "2.0.0"}
+    return {"status": "healthy", "service": "FeeScout API", "version": "2.1.0"}
 
 
-# Vercel handler
+# Vercel handler — must be named "handler" for Vercel Python runtime
 handler = app

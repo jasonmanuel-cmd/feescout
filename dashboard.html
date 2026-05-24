@@ -7,18 +7,18 @@
     <meta name="robots" content="noindex, nofollow">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
             --electric-green: #00D68F;
             --electric-green-hover: #00B87A;
-            --charcoal-deep: #0A0A0F;
-            --charcoal-card: #14141D;
-            --charcoal-border: #1E1E2A;
-            --charcoal-hover: #1A1A28;
+            --charcoal-deep: #07070C;
+            --charcoal-card: #111118;
+            --charcoal-border: #1A1A26;
+            --charcoal-hover: #16161F;
             --text-primary: #FFFFFF;
             --text-secondary: #8A8A9A;
-            --text-muted: #5A5A6A;
+            --text-muted: #4A4A5A;
             --warning-gold: #F59E0B;
             --danger-red: #EF4444;
             --blue: #3B82F6;
@@ -30,60 +30,63 @@
             color: var(--text-primary);
             line-height: 1.6;
         }
-        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
 
         /* Header */
         header {
-            background: rgba(20, 20, 29, 0.8);
-            backdrop-filter: blur(12px);
-            border: 1px solid var(--charcoal-border);
-            padding: 16px 0;
-            margin-bottom: 30px;
-            border-radius: 16px;
+            background: rgba(17, 17, 24, 0.85);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(26, 26, 38, 0.6);
+            padding: 14px 0;
+            margin-bottom: 28px;
+            border-radius: 14px;
         }
         .header-content {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            max-width: 1160px;
+            max-width: 1060px;
             margin: 0 auto;
             padding: 0 24px;
         }
-        .logo { height: 40px; }
+        .logo { height: 48px; }
+        nav { display: flex; align-items: center; gap: 12px; }
         nav a {
             color: var(--text-secondary);
             text-decoration: none;
-            margin-left: 30px;
+            margin-left: 20px;
             font-weight: 500;
-            font-size: 15px;
+            font-size: 14px;
             transition: color 0.3s;
         }
         nav a:hover { color: var(--electric-green); }
         .user-badge {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
         }
         .tier-badge {
             background: rgba(0, 214, 143, 0.15);
             color: var(--electric-green);
             padding: 4px 14px;
-            border-radius: 20px;
-            font-size: 13px;
-            font-weight: 600;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
         .tier-badge.free { background: rgba(138, 138, 154, 0.15); color: var(--text-secondary); }
+        .tier-badge.trader { background: rgba(245, 158, 11, 0.15); color: var(--warning-gold); }
+        .tier-badge.hobbyist { background: rgba(59, 130, 246, 0.15); color: var(--blue); }
         .logout-btn {
             background: none;
             border: 1px solid var(--charcoal-border);
             color: var(--text-secondary);
-            padding: 6px 16px;
+            padding: 5px 14px;
             border-radius: 8px;
             cursor: pointer;
-            font-size: 13px;
-            font-weight: 500;
+            font-size: 12px;
+            font-weight: 600;
             transition: all 0.3s;
         }
         .logout-btn:hover { border-color: var(--danger-red); color: var(--danger-red); }
@@ -91,42 +94,58 @@
         /* Dashboard Grid */
         .dashboard-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
         }
         .card {
-            background: var(--charcoal-card);
+            background: rgba(17, 17, 24, 0.7);
             border: 1px solid var(--charcoal-border);
-            border-radius: 16px;
-            padding: 28px;
+            border-radius: 14px;
+            padding: 24px;
         }
         .card h3 {
             color: var(--text-secondary);
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
         .card .big-number {
-            font-size: 42px;
+            font-size: 38px;
             font-weight: 700;
             font-family: 'JetBrains Mono', monospace;
             color: var(--electric-green);
         }
         .card .sub {
             color: var(--text-muted);
-            font-size: 14px;
-            margin-top: 6px;
+            font-size: 13px;
+            margin-top: 4px;
         }
+
+        /* Welcome */
+        .welcome-bar {
+            background: rgba(17, 17, 24, 0.7);
+            border: 1px solid var(--charcoal-border);
+            border-radius: 14px;
+            padding: 24px 28px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .welcome-bar h2 { font-size: 20px; font-weight: 700; }
+        .welcome-bar p { color: var(--text-secondary); font-size: 14px; }
 
         /* Usage Bar */
         .usage-bar-container {
             background: var(--charcoal-hover);
             border-radius: 8px;
-            height: 10px;
-            margin-top: 14px;
+            height: 8px;
+            margin-top: 12px;
             overflow: hidden;
         }
         .usage-bar {
@@ -142,8 +161,8 @@
         .api-key-display {
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-top: 12px;
+            gap: 8px;
+            margin-top: 10px;
         }
         .api-key-code {
             background: var(--charcoal-hover);
@@ -151,7 +170,7 @@
             border-radius: 8px;
             padding: 10px 14px;
             font-family: 'JetBrains Mono', monospace;
-            font-size: 13px;
+            font-size: 12px;
             color: var(--electric-green);
             flex: 1;
             word-break: break-all;
@@ -160,10 +179,10 @@
             background: var(--charcoal-hover);
             border: 1px solid var(--charcoal-border);
             color: var(--text-secondary);
-            padding: 10px 14px;
+            padding: 10px 12px;
             border-radius: 8px;
             cursor: pointer;
-            font-size: 13px;
+            font-size: 12px;
             white-space: nowrap;
             transition: all 0.3s;
         }
@@ -171,28 +190,28 @@
 
         /* Upgrade Banner */
         .upgrade-banner {
-            background: linear-gradient(135deg, rgba(0, 214, 143, 0.1), rgba(59, 130, 246, 0.1));
-            border: 1px solid var(--electric-green);
-            border-radius: 16px;
-            padding: 28px 32px;
-            margin-bottom: 30px;
+            background: linear-gradient(135deg, rgba(0, 214, 143, 0.08), rgba(59, 130, 246, 0.06));
+            border: 1px solid rgba(0, 214, 143, 0.25);
+            border-radius: 14px;
+            padding: 24px 28px;
+            margin-bottom: 24px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            gap: 16px;
+            gap: 14px;
         }
-        .upgrade-banner h3 { color: var(--text-primary); font-size: 20px; margin-bottom: 4px; }
-        .upgrade-banner p { color: var(--text-secondary); font-size: 15px; }
+        .upgrade-banner h3 { color: var(--text-primary); font-size: 18px; margin-bottom: 2px; font-weight: 700; }
+        .upgrade-banner p { color: var(--text-secondary); font-size: 14px; }
         .upgrade-banner .cta-button {
             display: inline-block;
             background: var(--electric-green);
             color: #000;
-            padding: 14px 32px;
+            padding: 12px 28px;
             border-radius: 10px;
             text-decoration: none;
             font-weight: 700;
-            font-size: 16px;
+            font-size: 14px;
             transition: all 0.3s;
             border: none;
             cursor: pointer;
@@ -200,21 +219,33 @@
         .upgrade-banner .cta-button:hover {
             background: var(--electric-green-hover);
             transform: translateY(-2px);
-            box-shadow: 0 8px 30px rgba(0, 214, 143, 0.3);
+            box-shadow: 0 8px 30px rgba(0, 214, 143, 0.25);
         }
+
+        /* Paid Feature Banner */
+        .paid-banner {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(0, 214, 143, 0.08));
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 14px;
+            padding: 24px 28px;
+            margin-bottom: 24px;
+        }
+        .paid-banner h3 { color: var(--warning-gold); font-size: 18px; margin-bottom: 4px; font-weight: 700; }
+        .paid-banner p { color: var(--text-secondary); font-size: 14px; }
 
         /* Quickstart Code */
         .code-block {
             background: #0d1117;
             border: 1px solid var(--charcoal-border);
             border-radius: 10px;
-            padding: 18px;
+            padding: 16px;
             font-family: 'JetBrains Mono', monospace;
-            font-size: 13px;
+            font-size: 12px;
             color: #c9d1d9;
             overflow-x: auto;
-            margin-top: 12px;
+            margin-top: 10px;
             white-space: pre;
+            line-height: 1.5;
         }
         .code-block .comment { color: #8b949e; }
         .code-block .string { color: #a5d6ff; }
@@ -224,16 +255,16 @@
         .chart-bar {
             display: flex;
             align-items: flex-end;
-            gap: 3px;
-            height: 80px;
-            margin-top: 14px;
+            gap: 2px;
+            height: 72px;
+            margin-top: 12px;
         }
         .chart-bar .bar {
             flex: 1;
             background: var(--electric-green);
-            border-radius: 3px 3px 0 0;
-            min-height: 4px;
-            opacity: 0.7;
+            border-radius: 2px 2px 0 0;
+            min-height: 3px;
+            opacity: 0.6;
             transition: opacity 0.2s;
         }
         .chart-bar .bar:hover { opacity: 1; }
@@ -244,9 +275,9 @@
             display: flex; flex-direction: column; gap: 10px;
         }
         .toast {
-            padding: 14px 20px; border-radius: 10px; color: #fff;
-            font-size: 14px; font-weight: 500; max-width: 380px;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+            padding: 12px 18px; border-radius: 10px; color: #fff;
+            font-size: 13px; font-weight: 600; max-width: 360px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
             animation: toast-in 0.3s ease;
         }
         .toast-success { background: var(--electric-green); }
@@ -263,21 +294,21 @@
             background: var(--charcoal-card);
             border: 1px solid var(--charcoal-border);
             border-radius: 16px;
-            max-width: 480px;
+            max-width: 440px;
             width: 100%;
-            padding: 36px;
+            padding: 32px;
             box-shadow: 0 25px 60px rgba(0,0,0,0.5);
         }
-        .modal h2 { font-size: 24px; margin-bottom: 8px; }
-        .modal p.sub { color: var(--text-secondary); margin-bottom: 24px; }
-        .form-group { margin-bottom: 16px; }
-        .form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .modal h2 { font-size: 22px; margin-bottom: 6px; font-weight: 700; }
+        .modal p.sub { color: var(--text-secondary); margin-bottom: 20px; font-size: 14px; }
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
         .form-group input {
             width: 100%;
             background: var(--charcoal-hover);
             border: 1px solid var(--charcoal-border);
             border-radius: 10px;
-            padding: 12px 16px;
+            padding: 12px 14px;
             color: var(--text-primary);
             font-size: 15px;
             font-family: 'Inter', sans-serif;
@@ -293,19 +324,19 @@
             border-radius: 10px;
             border: none;
             font-weight: 700;
-            font-size: 16px;
+            font-size: 15px;
             cursor: pointer;
-            margin-top: 8px;
+            margin-top: 6px;
             transition: all 0.3s;
         }
         .modal .cta-button:hover { background: var(--electric-green-hover); }
         .modal .switch-text {
             text-align: center;
-            margin-top: 16px;
+            margin-top: 14px;
             color: var(--text-secondary);
-            font-size: 14px;
+            font-size: 13px;
         }
-        .modal .switch-text a { color: var(--electric-green); cursor: pointer; text-decoration: none; }
+        .modal .switch-text a { color: var(--electric-green); cursor: pointer; text-decoration: none; font-weight: 600; }
         .modal .switch-text a:hover { text-decoration: underline; }
         .modal-close {
             position: absolute; top: 16px; right: 16px;
@@ -315,8 +346,9 @@
         .error-msg { color: var(--danger-red); font-size: 13px; margin-top: 8px; }
 
         @media (max-width: 768px) {
-            .dashboard-grid { grid-template-columns: 1fr; }
+            .dashboard-grid { grid-template-columns: 1fr 1fr; }
             .upgrade-banner { flex-direction: column; text-align: center; }
+            .welcome-bar { flex-direction: column; align-items: flex-start; }
         }
     </style>
 </head>
@@ -361,6 +393,14 @@
             </div>
         </header>
 
+        <!-- Welcome -->
+        <div id="welcome-bar" class="welcome-bar" style="display:none;">
+            <div>
+                <h2 id="welcome-name">Welcome!</h2>
+                <p id="welcome-tier">You're on the Free plan</p>
+            </div>
+        </div>
+
         <!-- Upgrade Banner (shown when usage >= 80%) -->
         <div id="upgrade-banner" class="upgrade-banner" style="display:none;">
             <div>
@@ -368,6 +408,12 @@
                 <p>Upgrade to keep tracking gas fees without interruption.</p>
             </div>
             <a href="/#pricing" class="cta-button">Upgrade Now</a>
+        </div>
+
+        <!-- Paid Features Banner (shown for hobbyist/trader) -->
+        <div id="paid-banner" class="paid-banner" style="display:none;">
+            <h3>✨ Premium Features Active</h3>
+            <p id="paid-features-text">All 41 chains, email alerts, and priority support.</p>
         </div>
 
         <div class="dashboard-grid">
@@ -398,22 +444,22 @@
             <!-- Current Tier -->
             <div class="card">
                 <h3>Your Plan</h3>
-                <div class="big-number" id="current-tier" style="font-size:28px; text-transform:capitalize;">—</div>
+                <div class="big-number" id="current-tier" style="font-size:26px; text-transform:capitalize;">—</div>
                 <div class="sub" id="tier-desc">100 calls/day • Top 5 chains</div>
-                <a href="/#pricing" class="cta-button secondary" style="margin-top:16px; display:inline-block; padding:10px 24px; font-size:14px; text-decoration:none; border:1px solid var(--charcoal-border); background:transparent; color:var(--text-primary); border-radius:8px; font-weight:600; cursor:pointer;">View Plans</a>
+                <a href="/#pricing" style="margin-top:14px; display:inline-block; padding:9px 20px; font-size:13px; text-decoration:none; border:1px solid var(--charcoal-border); color:var(--text-primary); border-radius:8px; font-weight:600; cursor:pointer;">View Plans</a>
             </div>
         </div>
 
         <!-- API Key Card -->
-        <div class="card" style="margin-bottom:30px;">
+        <div class="card" style="margin-bottom:24px;">
             <h3>Your API Key</h3>
             <div class="api-key-display">
                 <div class="api-key-code" id="api-key-display">—</div>
                 <button class="copy-btn" onclick="copyApiKey()">📋 Copy</button>
                 <button class="copy-btn" onclick="rotateKey()" style="color:var(--warning-gold);">🔄 Rotate</button>
             </div>
-            <div style="margin-top:24px;">
-                <h3 style="margin-bottom:8px;">Quickstart</h3>
+            <div style="margin-top:20px;">
+                <h3 style="margin-bottom:6px;">Quickstart</h3>
                 <div class="code-block"><span class="comment"># Get live gas fees across all chains</span>
 curl -H <span class="string">"X-API-Key: <span id="code-api-key">YOUR_KEY</span>"</span> \
   https://feescout.com/api/gas-fees/latest
@@ -425,7 +471,7 @@ curl -H <span class="string">"X-API-Key: <span id="code-api-key-2">YOUR_KEY</spa
         </div>
 
         <!-- Daily Usage Chart -->
-        <div class="card" style="margin-bottom:30px;">
+        <div class="card" style="margin-bottom:24px;">
             <h3>Daily Usage (Last 30 Days)</h3>
             <div class="chart-bar" id="usage-chart">
                 <div style="color:var(--text-muted);font-size:13px;">Loading...</div>
@@ -435,17 +481,18 @@ curl -H <span class="string">"X-API-Key: <span id="code-api-key-2">YOUR_KEY</spa
 
     <script>
         // State
-        let isLoginMode = false;
-        let dashboardData = null;
+        var isLoginMode = false;
+        var dashboardData = null;
 
         // Toast
-        function showToast(msg, type = 'success') {
-            const c = document.getElementById('toast-container');
-            const t = document.createElement('div');
-            t.className = `toast toast-${type}`;
+        function showToast(msg, type) {
+            type = type || 'success';
+            var c = document.getElementById('toast-container');
+            var t = document.createElement('div');
+            t.className = 'toast toast-' + type;
             t.textContent = msg;
             c.appendChild(t);
-            setTimeout(() => t.remove(), 4000);
+            setTimeout(function() { t.remove(); }, 4000);
         }
 
         // Auth mode toggle
@@ -461,101 +508,115 @@ curl -H <span class="string">"X-API-Key: <span id="code-api-key-2">YOUR_KEY</spa
         }
 
         // Auth form handler
-        async function handleAuth(e) {
+        function handleAuth(e) {
             e.preventDefault();
-            const email = document.getElementById('auth-email').value.trim();
-            const password = document.getElementById('auth-password').value;
-            const errorEl = document.getElementById('auth-error');
-            const btn = document.getElementById('auth-submit-btn');
+            var email = document.getElementById('auth-email').value.trim();
+            var password = document.getElementById('auth-password').value;
+            var errorEl = document.getElementById('auth-error');
+            var btn = document.getElementById('auth-submit-btn');
             errorEl.textContent = '';
             btn.disabled = true;
             btn.textContent = 'Please wait...';
 
-            try {
-                const endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/signup';
-                const resp = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password }),
-                });
-                const data = await resp.json();
-                if (!resp.ok) throw new Error(data.detail || data.error || 'Request failed');
-
-                showToast(isLoginMode ? 'Welcome back!' : 'Account created! Check your email for your API key.');
+            var endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/signup';
+            fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email, password: password }),
+                credentials: 'include',
+            })
+            .then(function(resp) { return resp.json().then(function(d) { return { ok: resp.ok, data: d }; }); })
+            .then(function(result) {
+                if (!result.ok) throw new Error(result.data.detail || result.data.error || 'Request failed');
+                // Hide auth modal and load dashboard (stay on same page)
                 document.getElementById('auth-modal').style.display = 'none';
+                showToast(isLoginMode ? 'Welcome back!' : 'Account created!', 'success');
                 loadDashboard();
-            } catch (err) {
+            })
+            .catch(function(err) {
                 errorEl.textContent = err.message;
-            } finally {
+            })
+            .finally(function() {
                 btn.disabled = false;
                 btn.textContent = isLoginMode ? 'Log In' : 'Sign Up Free';
-            }
+            });
             return false;
         }
 
         // Logout
-        async function logout() {
-            await fetch('/api/auth/logout', { method: 'POST' });
-            showToast('Logged out');
-            setTimeout(() => location.reload(), 500);
+        function logout() {
+            fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+            .then(function() {
+                showToast('Logged out');
+                setTimeout(function() { location.reload(); }, 500);
+            });
         }
 
         // Copy API key
         function copyApiKey() {
-            const key = document.getElementById('api-key-display').textContent;
-            navigator.clipboard.writeText(key).then(() => showToast('API key copied!'));
+            var key = document.getElementById('api-key-display').textContent;
+            navigator.clipboard.writeText(key).then(function() { showToast('API key copied!'); });
         }
 
         // Rotate API key
-        async function rotateKey() {
+        function rotateKey() {
             if (!confirm('Rotate your API key? The old key will stop working immediately.')) return;
-            try {
-                const resp = await fetch('/api/auth/rotate-key', { method: 'POST' });
-                const data = await resp.json();
-                if (!resp.ok) throw new Error(data.detail || 'Failed');
+            fetch('/api/auth/rotate-key', { method: 'POST', credentials: 'include' })
+            .then(function(resp) { return resp.json().then(function(d) { return { ok: resp.ok, data: d }; }); })
+            .then(function(r) {
+                if (!r.ok) throw new Error(r.data.detail || 'Failed');
                 showToast('API key rotated!');
                 loadDashboard();
-            } catch (err) {
-                showToast(err.message, 'error');
-            }
+            })
+            .catch(function(err) { showToast(err.message, 'error'); });
         }
 
         // Load dashboard
-        async function loadDashboard() {
-            try {
-                const resp = await fetch('/api/dashboard');
+        function loadDashboard() {
+            fetch('/api/dashboard', { credentials: 'include' })
+            .then(function(resp) {
                 if (resp.status === 401) {
-                    // Not logged in — show auth modal
                     document.getElementById('auth-modal').style.display = 'flex';
-                    return;
+                    throw new Error('not_authenticated');
                 }
-                const data = await resp.json();
+                return resp.json().then(function(d) { return { data: d }; });
+            })
+            .then(function(result) {
+                var data = result.data;
                 if (!data.success) throw new Error(data.error || 'Failed to load');
 
                 dashboardData = data;
-                const u = data.user;
-                const usage = data.usage;
+                var u = data.user;
+                var usage = data.usage;
 
-                // Show user badge
+                // Show dashboard elements
+                document.getElementById('welcome-bar').style.display = 'flex';
+                document.getElementById('welcome-name').textContent = 'Welcome, ' + u.email.split('@')[0] + '!';
+
+                // Show user badge in header
                 document.getElementById('user-badge').style.display = 'flex';
-                const tierBadge = document.getElementById('tier-badge');
+                var tierBadge = document.getElementById('tier-badge');
                 tierBadge.textContent = u.tier;
-                tierBadge.className = 'tier-badge' + (u.tier === 'free' ? ' free' : '');
+                tierBadge.className = 'tier-badge ' + (u.tier === 'free' ? 'free' : u.tier);
+
+                // Welcome text
+                var tierNames = { free: 'Free', hobbyist: 'Hobbyist', trader: 'Trader' };
+                document.getElementById('welcome-tier').textContent = "You're on the " + tierNames[u.tier] + ' plan';
 
                 // Usage
                 document.getElementById('usage-today').textContent = usage.today;
-                document.getElementById('usage-limit-text').textContent = `of ${usage.daily_limit} per day`;
+                document.getElementById('usage-limit-text').textContent = 'of ' + usage.daily_limit + ' per day';
                 document.getElementById('usage-total').textContent = usage.total;
-                document.getElementById('est-savings').textContent = `$${data.estimated_savings_usd}`;
+                document.getElementById('est-savings').textContent = '$' + data.estimated_savings_usd;
 
                 // Usage bar
-                const bar = document.getElementById('usage-bar');
-                bar.style.width = `${Math.min(100, usage.usage_pct)}%`;
+                var bar = document.getElementById('usage-bar');
+                bar.style.width = Math.min(100, usage.usage_pct) + '%';
                 bar.className = 'usage-bar ' + (usage.usage_pct >= 90 ? 'danger' : usage.usage_pct >= 70 ? 'warn' : 'ok');
 
                 // Tier
                 document.getElementById('current-tier').textContent = u.tier;
-                const tierDescs = {
+                var tierDescs = {
                     free: '100 calls/day • Top 5 chains',
                     hobbyist: '10,000 calls/day • All 41 chains + alerts',
                     trader: '100,000 calls/day • Real-time + webhooks',
@@ -567,30 +628,43 @@ curl -H <span class="string">"X-API-Key: <span id="code-api-key-2">YOUR_KEY</spa
                 document.getElementById('code-api-key').textContent = u.api_key;
                 document.getElementById('code-api-key-2').textContent = u.api_key;
 
-                // Upgrade banner
+                // Upgrade banner for free users near limit
                 if (data.upgrade_cta) {
                     document.getElementById('upgrade-banner').style.display = 'flex';
+                }
+
+                // Paid feature banner
+                if (u.tier === 'hobbyist') {
+                    document.getElementById('paid-banner').style.display = 'block';
+                    document.getElementById('paid-features-text').textContent = 'All 41 chains, email alerts (3 thresholds), 30-day history, and priority support.';
+                } else if (u.tier === 'trader') {
+                    document.getElementById('paid-banner').style.display = 'block';
+                    document.getElementById('paid-features-text').textContent = 'Real-time WebSocket feed, 100K calls/day, 6-month history, Telegram integration, and unlimited webhook alerts.';
                 }
 
                 // Daily chart
                 renderChart(usage.daily_breakdown);
 
-            } catch (err) {
-                console.error('Dashboard load failed:', err);
-                document.getElementById('auth-modal').style.display = 'flex';
-            }
+            })
+            .catch(function(err) {
+                if (err.message !== 'not_authenticated') {
+                    console.error('Dashboard load failed:', err);
+                    document.getElementById('auth-modal').style.display = 'flex';
+                }
+            });
         }
 
         function renderChart(daily) {
-            const container = document.getElementById('usage-chart');
+            var container = document.getElementById('usage-chart');
             if (!daily || !daily.length) {
                 container.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">No usage data yet. Make your first API call!</div>';
                 return;
             }
-            const maxCount = Math.max(...daily.map(d => d.count), 1);
-            container.innerHTML = daily.map(d => {
-                const pct = (d.count / maxCount) * 100;
-                return `<div class="bar" style="height:${Math.max(8, pct)}%" title="${d.day}: ${d.count} calls"></div>`;
+            var maxCount = Math.max.apply(null, daily.map(function(d) { return d.count; }));
+            if (maxCount < 1) maxCount = 1;
+            container.innerHTML = daily.map(function(d) {
+                var pct = (d.count / maxCount) * 100;
+                return '<div class="bar" style="height:' + Math.max(6, pct) + '%" title="' + d.day + ': ' + d.count + ' calls"></div>';
             }).join('');
         }
 
