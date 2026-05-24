@@ -1,13 +1,15 @@
 """
 FeeScout — Complete backend API with auth, user management, and dashboard.
-Deployed on Vercel as api/index.py (FastAPI).
+Deployed on Vercel as api/index.py (FastAPI + Supabase Postgres).
 """
 from fastapi import FastAPI, Response, Request, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from pydantic import BaseModel, EmailStr
+import psycopg2
+import psycopg2.extras
+import psycopg2.errorcodes
 import requests
-import sqlite3
 import os
 import json
 import secrets
@@ -31,14 +33,14 @@ app.add_middleware(
 # Configuration
 # ---------------------------------------------------------------------------
 BLOCKCHAIR_API_KEY = os.getenv("BLOCKCHAIR_API_KEY", "")
-DATABASE_PATH = "/tmp/feescout.db"  # Vercel writable directory
+DATABASE_URL = os.getenv("DATABASE_URL", "")
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
 RESEND_FROM = os.getenv("RESEND_FROM", "FeeScout <onboarding@feescout.com>")
 SQUARE_HOBBYIST_LINK = os.getenv("SQUARE_HOBBYIST_LINK", "https://square.link/u/YjHtGg2s")
 SQUARE_TRADER_LINK = os.getenv("SQUARE_TRADER_LINK", "https://square.link/u/bW26nrZE")
 
 # Master account email — always gets trader tier
-MASTER_EMAILS = {"blunt95@gmail.com"}
+MASTER_EMAILS = {"blunts954@gmail.com"}
 
 # Rate limits per tier (requests per day)
 RATE_LIMITS = {
@@ -67,16 +69,13 @@ _fee_cache: dict = {"data": None, "timestamp": None, "ttl_seconds": 60}
 # ---------------------------------------------------------------------------
 # Database helpers
 # ---------------------------------------------------------------------------
-def get_db() -> sqlite3.Connection:
-    conn = sqlite3.connect(DATABASE_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA foreign_keys=ON")
+def get_db() -> psycopg2.extensions.connection:
+    """Open a new Postgres connection using the DATABASE_URL env var."""
+    conn = psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
     return conn
 
 
 def _is_https(request: Request) -> bool:
-    """Check if the request came over HTTPS."""
     proto = request.headers.get("x-forwarded-proto", "")
     return proto == "https" or request.url.scheme == "https"
 
@@ -84,9 +83,10 @@ def _is_https(request: Request) -> bool:
 def init_db():
     """Create tables if they don't exist. Safe to call on every cold start."""
     conn = get_db()
-    conn.executescript("""
+    cur = conn.cursor()
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
             api_key TEXT UNIQUE NOT NULL,
@@ -96,35 +96,41 @@ def init_db():
             last_login TEXT,
             square_customer_id TEXT,
             subscribed_at TEXT
-        );
-
+        )
+    """)
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS sessions (
             token TEXT PRIMARY KEY,
-            user_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL REFERENCES users(id),
             created_at TEXT NOT NULL,
-            expires_at TEXT NOT NULL,
-            FOREIGN KEY (user_id) REFERENCES users(id)
-        );
-
+            expires_at TEXT NOT NULL
+        )
+    """)
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS usage_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id),
             api_key TEXT,
             endpoint TEXT NOT NULL,
             ts TEXT NOT NULL,
-            status_code INTEGER,
-            FOREIGN KEY (user_id) REFERENCES users(id)
-        );
-
-        CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
-        CREATE INDEX IF NOT EXISTS idx_users_api_key ON users(api_key);
-        CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-        CREATE INDEX IF NOT EXISTS idx_usage_user_ts ON usage_log(user_id, ts);
+            status_code INTEGER
+        )
     """)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_users_api_key ON users(api_key)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_usage_user_ts ON usage_log(user_id, ts)")
+    conn.commit()
+    cur.close()
     conn.close()
 
 
-init_db()
+# Only run init_db if DATABASE_URL is configured
+if DATABASE_URL:
+    try:
+        init_db()
+    except Exception as e:
+        print(f"[FeeScout] DB init warning: {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -158,17 +164,18 @@ def create_session(user_id: int) -> str:
     now = datetime.now(timezone.utc)
     expires = now + timedelta(days=SESSION_DAYS)
     conn = get_db()
-    conn.execute(
-        "INSERT INTO sessions (token, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)",
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO sessions (token, user_id, created_at, expires_at) VALUES (%s, %s, %s, %s)",
         (token, user_id, now.isoformat(), expires.isoformat()),
     )
     conn.commit()
+    cur.close()
     conn.close()
     return token
 
 
 def set_session_cookie(response: Response, token: str, request: Request):
-    """Set session cookie — secure flag only on HTTPS."""
     response.set_cookie(
         key=SESSION_COOKIE,
         value=token,
@@ -185,29 +192,32 @@ def get_user_from_session(request: Request) -> Optional[dict]:
     if not token:
         return None
     conn = get_db()
-    row = conn.execute(
+    cur = conn.cursor()
+    cur.execute(
         """SELECT u.* FROM users u
            JOIN sessions s ON s.user_id = u.id
-           WHERE s.token = ? AND s.expires_at > ?""",
+           WHERE s.token = %s AND s.expires_at > %s""",
         (token, datetime.now(timezone.utc).isoformat()),
-    ).fetchone()
+    )
+    row = cur.fetchone()
+    cur.close()
     conn.close()
-    if row:
-        return dict(row)
-    return None
+    return dict(row) if row else None
 
 
 def get_user_from_api_key(api_key: str) -> Optional[dict]:
     if not api_key:
         return None
     conn = get_db()
-    row = conn.execute("SELECT * FROM users WHERE api_key = ?", (api_key,)).fetchone()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM users WHERE api_key = %s", (api_key,))
+    row = cur.fetchone()
+    cur.close()
     conn.close()
     return dict(row) if row else None
 
 
 def get_current_user(request: Request) -> Optional[dict]:
-    """Check session cookie first, then API key header."""
     user = get_user_from_session(request)
     if user:
         return user
@@ -218,36 +228,49 @@ def get_current_user(request: Request) -> Optional[dict]:
 
 
 def check_rate_limit(user: dict) -> bool:
-    """Return True if the user is within their daily rate limit."""
     tier = user.get("tier", "free")
     limit = RATE_LIMITS.get(tier, 100)
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     conn = get_db()
-    row = conn.execute(
-        "SELECT COUNT(*) as cnt FROM usage_log WHERE user_id = ? AND ts LIKE ?",
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT COUNT(*) as cnt FROM usage_log WHERE user_id = %s AND ts LIKE %s",
         (user["id"], f"{today}%"),
-    ).fetchone()
+    )
+    row = cur.fetchone()
+    cur.close()
     conn.close()
     return row["cnt"] < limit
 
 
 def log_request(user_id: Optional[int], api_key: Optional[str], endpoint: str, status_code: int):
-    conn = get_db()
-    conn.execute(
-        "INSERT INTO usage_log (user_id, api_key, endpoint, ts, status_code) VALUES (?, ?, ?, ?, ?)",
-        (user_id, api_key, endpoint, datetime.now(timezone.utc).isoformat(), status_code),
-    )
-    conn.commit()
-    conn.close()
+    if not DATABASE_URL:
+        return
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO usage_log (user_id, api_key, endpoint, ts, status_code) VALUES (%s, %s, %s, %s, %s)",
+            (user_id, api_key, endpoint, datetime.now(timezone.utc).isoformat(), status_code),
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print(f"[FeeScout] log_request error: {e}")
 
 
 def ensure_master_tier(user: dict):
-    """Auto-promote master emails to trader tier."""
     if user["email"] in MASTER_EMAILS and user["tier"] != "trader":
         conn = get_db()
+        cur = conn.cursor()
         now = datetime.now(timezone.utc).isoformat()
-        conn.execute("UPDATE users SET tier = 'trader', updated_at = ? WHERE id = ?", (now, user["id"]))
+        cur.execute(
+            "UPDATE users SET tier = 'trader', updated_at = %s WHERE id = %s",
+            (now, user["id"]),
+        )
         conn.commit()
+        cur.close()
         conn.close()
         user["tier"] = "trader"
 
@@ -321,28 +344,30 @@ async def signup(req: SignupRequest, response: Response, request: Request):
     api_key = generate_api_key()
     pw_hash = hash_password(req.password)
     now = datetime.now(timezone.utc).isoformat()
-
-    # Auto-promote master emails to trader tier
     initial_tier = "trader" if req.email in MASTER_EMAILS else "free"
 
     conn = get_db()
+    cur = conn.cursor()
     try:
-        conn.execute(
-            "INSERT INTO users (email, password_hash, api_key, tier, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+        cur.execute(
+            "INSERT INTO users (email, password_hash, api_key, tier, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s)",
             (req.email, pw_hash, api_key, initial_tier, now, now),
         )
         conn.commit()
-        user_id = conn.execute("SELECT id FROM users WHERE api_key = ?", (api_key,)).fetchone()["id"]
-    except sqlite3.IntegrityError:
+        cur.execute("SELECT id FROM users WHERE api_key = %s", (api_key,))
+        user_id = cur.fetchone()["id"]
+    except psycopg2.errors.UniqueViolation:
+        conn.rollback()
+        cur.close()
         conn.close()
         raise HTTPException(409, "An account with this email already exists")
-    conn.close()
+    finally:
+        cur.close()
+        conn.close()
 
-    # Create session
     token = create_session(user_id)
     set_session_cookie(response, token, request)
 
-    # Send welcome email
     limit = RATE_LIMITS.get(initial_tier, 100)
     send_email(
         req.email,
@@ -351,14 +376,16 @@ async def signup(req: SignupRequest, response: Response, request: Request):
     )
 
     log_request(user_id, api_key, "/api/auth/signup", 200)
-
     return {"success": True, "api_key": api_key, "tier": initial_tier}
 
 
 @app.post("/api/auth/login")
 async def login(req: LoginRequest, response: Response, request: Request):
     conn = get_db()
-    row = conn.execute("SELECT * FROM users WHERE email = ?", (req.email,)).fetchone()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM users WHERE email = %s", (req.email,))
+    row = cur.fetchone()
+    cur.close()
     conn.close()
 
     if not row or not verify_password(req.password, row["password_hash"]):
@@ -370,19 +397,27 @@ async def login(req: LoginRequest, response: Response, request: Request):
     if req.email in MASTER_EMAILS and user["tier"] != "trader":
         now = datetime.now(timezone.utc).isoformat()
         conn = get_db()
-        conn.execute("UPDATE users SET tier = 'trader', updated_at = ? WHERE id = ?", (now, user["id"]))
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE users SET tier = 'trader', updated_at = %s WHERE id = %s",
+            (now, user["id"]),
+        )
         conn.commit()
+        cur.close()
         conn.close()
         user["tier"] = "trader"
 
-    # Update last login
     now = datetime.now(timezone.utc).isoformat()
     conn = get_db()
-    conn.execute("UPDATE users SET last_login = ?, updated_at = ? WHERE id = ?", (now, now, user["id"]))
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE users SET last_login = %s, updated_at = %s WHERE id = %s",
+        (now, now, user["id"]),
+    )
     conn.commit()
+    cur.close()
     conn.close()
 
-    # Create session
     token = create_session(user["id"])
     set_session_cookie(response, token, request)
 
@@ -394,8 +429,10 @@ async def logout(request: Request, response: Response):
     token = request.cookies.get(SESSION_COOKIE)
     if token:
         conn = get_db()
-        conn.execute("DELETE FROM sessions WHERE token = ?", (token,))
+        cur = conn.cursor()
+        cur.execute("DELETE FROM sessions WHERE token = %s", (token,))
         conn.commit()
+        cur.close()
         conn.close()
     response.delete_cookie(SESSION_COOKIE, path="/")
     return {"success": True}
@@ -409,17 +446,20 @@ async def me(request: Request):
 
     ensure_master_tier(user)
 
-    # Get today's usage
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     conn = get_db()
-    usage_row = conn.execute(
-        "SELECT COUNT(*) as cnt FROM usage_log WHERE user_id = ? AND ts LIKE ?",
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT COUNT(*) as cnt FROM usage_log WHERE user_id = %s AND ts LIKE %s",
         (user["id"], f"{today}%"),
-    ).fetchone()
-    total_row = conn.execute(
-        "SELECT COUNT(*) as cnt FROM usage_log WHERE user_id = ?",
+    )
+    usage_today = cur.fetchone()["cnt"]
+    cur.execute(
+        "SELECT COUNT(*) as cnt FROM usage_log WHERE user_id = %s",
         (user["id"],),
-    ).fetchone()
+    )
+    usage_total = cur.fetchone()["cnt"]
+    cur.close()
     conn.close()
 
     limit = RATE_LIMITS.get(user["tier"], 100)
@@ -432,8 +472,8 @@ async def me(request: Request):
             "api_key": user["api_key"],
             "created_at": user["created_at"],
             "last_login": user["last_login"],
-            "usage_today": usage_row["cnt"],
-            "usage_total": total_row["cnt"],
+            "usage_today": usage_today,
+            "usage_total": usage_total,
             "daily_limit": limit,
         },
     }
@@ -447,11 +487,13 @@ async def rotate_key(request: Request):
 
     new_key = generate_api_key()
     conn = get_db()
-    conn.execute(
-        "UPDATE users SET api_key = ?, updated_at = ? WHERE id = ?",
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE users SET api_key = %s, updated_at = %s WHERE id = %s",
         (new_key, datetime.now(timezone.utc).isoformat(), user["id"]),
     )
     conn.commit()
+    cur.close()
     conn.close()
 
     return {"success": True, "api_key": new_key}
@@ -531,7 +573,6 @@ async def get_latest_fees(request: Request):
     api_key = request.headers.get("X-API-Key", "")
     user = get_current_user(request)
 
-    # Rate limit check for API key users
     if user and not check_rate_limit(user):
         log_request(user["id"], api_key, "/api/gas-fees/latest", 429)
         raise HTTPException(429, "Daily rate limit exceeded. Upgrade your plan at /#pricing")
@@ -625,33 +666,34 @@ async def dashboard_data(request: Request):
     ensure_master_tier(user)
 
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    conn = get_db()
-
-    # Today's usage
-    usage_today = conn.execute(
-        "SELECT COUNT(*) as cnt FROM usage_log WHERE user_id = ? AND ts LIKE ?",
-        (user["id"], f"{today}%"),
-    ).fetchone()["cnt"]
-
-    # Total usage
-    usage_total = conn.execute(
-        "SELECT COUNT(*) as cnt FROM usage_log WHERE user_id = ?",
-        (user["id"],),
-    ).fetchone()["cnt"]
-
-    # Last 30 days usage per day
     thirty_days_ago = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
-    daily_usage = conn.execute(
-        "SELECT date(ts) as day, COUNT(*) as cnt FROM usage_log WHERE user_id = ? AND ts > ? GROUP BY day ORDER BY day",
-        (user["id"], thirty_days_ago),
-    ).fetchall()
 
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute(
+        "SELECT COUNT(*) as cnt FROM usage_log WHERE user_id = %s AND ts LIKE %s",
+        (user["id"], f"{today}%"),
+    )
+    usage_today = cur.fetchone()["cnt"]
+
+    cur.execute(
+        "SELECT COUNT(*) as cnt FROM usage_log WHERE user_id = %s",
+        (user["id"],),
+    )
+    usage_total = cur.fetchone()["cnt"]
+
+    cur.execute(
+        "SELECT DATE(ts) as day, COUNT(*) as cnt FROM usage_log WHERE user_id = %s AND ts > %s GROUP BY day ORDER BY day",
+        (user["id"], thirty_days_ago),
+    )
+    daily_usage = cur.fetchall()
+
+    cur.close()
     conn.close()
 
     limit = RATE_LIMITS.get(user["tier"], 100)
     usage_pct = min(100, round((usage_today / limit) * 100)) if limit > 0 else 0
-
-    # Estimate gas savings (simple heuristic based on usage)
     estimated_savings = round(usage_total * 0.15, 2)
 
     return {
@@ -667,7 +709,7 @@ async def dashboard_data(request: Request):
             "total": usage_total,
             "daily_limit": limit,
             "usage_pct": usage_pct,
-            "daily_breakdown": [{"day": r["day"], "count": r["cnt"]} for r in daily_usage],
+            "daily_breakdown": [{"day": str(r["day"]), "count": r["cnt"]} for r in daily_usage],
         },
         "estimated_savings_usd": estimated_savings,
         "upgrade_cta": usage_pct >= 80 and user["tier"] == "free",
@@ -684,8 +726,24 @@ async def root():
 
 @app.get("/api/health")
 async def health_check():
-    return {"status": "healthy", "service": "FeeScout API", "version": "2.1.0"}
+    db_ok = False
+    if DATABASE_URL:
+        try:
+            conn = get_db()
+            cur = conn.cursor()
+            cur.execute("SELECT 1")
+            cur.close()
+            conn.close()
+            db_ok = True
+        except Exception:
+            db_ok = False
+    return {
+        "status": "healthy" if db_ok else "degraded",
+        "service": "FeeScout API",
+        "version": "2.1.0",
+        "database": "connected" if db_ok else "disconnected",
+    }
 
 
-# Vercel handler — must be named "handler" for Vercel Python runtime
+# Vercel handler
 handler = app
