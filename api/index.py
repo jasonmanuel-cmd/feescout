@@ -17,7 +17,7 @@ import hashlib
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-import hmac
+import hmac as hmac_lib
 
 app = FastAPI(title="FeeScout API", version="2.1.0")
 
@@ -38,6 +38,14 @@ RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
 RESEND_FROM = os.getenv("RESEND_FROM", "FeeScout <onboarding@feescout.com>")
 SQUARE_HOBBYIST_LINK = os.getenv("SQUARE_HOBBYIST_LINK", "https://square.link/u/YjHtGg2s")
 SQUARE_TRADER_LINK = os.getenv("SQUARE_TRADER_LINK", "https://square.link/u/bW26nrZE")
+SQUARE_WEBHOOK_SIGNATURE_KEY = os.getenv("SQUARE_WEBHOOK_SIGNATURE_KEY", "")
+
+# Payment amount → tier mapping (in cents)
+# Hobbyist = $29/mo = 2900 cents, Trader = $99/mo = 9900 cents
+SQUARE_TIER_BY_AMOUNT: dict = {
+    2900: "hobbyist",
+    9900: "trader",
+}
 
 # Master account email — always gets trader tier
 MASTER_EMAILS = {"blunts954@gmail.com"}
@@ -146,7 +154,7 @@ def verify_password(password: str, stored: str) -> bool:
     try:
         salt, hex_hash = stored.split("$", 1)
         pw_hash = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 100_000)
-        return hmac.compare_digest(pw_hash.hex(), hex_hash)
+        return hmac_lib.compare_digest(pw_hash.hex(), hex_hash)
     except Exception:
         return False
 
@@ -714,6 +722,107 @@ async def dashboard_data(request: Request):
         "estimated_savings_usd": estimated_savings,
         "upgrade_cta": usage_pct >= 80 and user["tier"] == "free",
     }
+
+
+# ---------------------------------------------------------------------------
+# Square webhook
+# ---------------------------------------------------------------------------
+def _verify_square_signature(body: bytes, signature_header: str, notification_url: str) -> bool:
+    """
+    Square signs webhooks with HMAC-SHA256 over (notification_url + raw_body).
+    The result is base64-encoded and sent in x-square-hmacsha256-signature.
+    """
+    if not SQUARE_WEBHOOK_SIGNATURE_KEY or not signature_header:
+        return False
+    import base64
+    payload = notification_url.encode("utf-8") + body
+    expected = base64.b64encode(
+        hmac_lib.new(
+            SQUARE_WEBHOOK_SIGNATURE_KEY.encode("utf-8"),
+            payload,
+            hashlib.sha256,
+        ).digest()
+    ).decode("utf-8")
+    return hmac_lib.compare_digest(expected, signature_header)
+
+
+def _upgrade_user_by_email(email: str, new_tier: str, square_customer_id: Optional[str] = None):
+    """Find a user by email and upgrade their tier. Returns True if found."""
+    if not email:
+        return False
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT id, tier FROM users WHERE email = %s", (email.lower(),))
+    row = cur.fetchone()
+    if not row:
+        cur.close()
+        conn.close()
+        print(f"[FeeScout] Square webhook: no account for {email} — tier upgrade skipped")
+        return False
+
+    now = datetime.now(timezone.utc).isoformat()
+    cur.execute(
+        """UPDATE users
+           SET tier = %s, updated_at = %s, subscribed_at = %s,
+               square_customer_id = COALESCE(%s, square_customer_id)
+           WHERE id = %s""",
+        (new_tier, now, now, square_customer_id, row["id"]),
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+    print(f"[FeeScout] Upgraded {email} → {new_tier}")
+    return True
+
+
+@app.post("/api/webhooks/square")
+async def square_webhook(request: Request):
+    body = await request.body()
+    signature = request.headers.get("x-square-hmacsha256-signature", "")
+
+    # Build the exact notification URL Square will sign against
+    notification_url = str(request.url)
+
+    if SQUARE_WEBHOOK_SIGNATURE_KEY and not _verify_square_signature(body, signature, notification_url):
+        print("[FeeScout] Square webhook: invalid signature — rejected")
+        raise HTTPException(403, "Invalid signature")
+
+    try:
+        payload = json.loads(body)
+    except Exception:
+        raise HTTPException(400, "Invalid JSON")
+
+    event_type = payload.get("type", "")
+    print(f"[FeeScout] Square webhook received: {event_type}")
+
+    # ---- payment.completed ------------------------------------------------
+    # Fires when a one-time or subscription payment succeeds.
+    if event_type == "payment.completed":
+        payment = payload.get("data", {}).get("object", {}).get("payment", {})
+        email = payment.get("buyer_email_address", "").lower()
+        amount_cents = payment.get("total_money", {}).get("amount", 0)
+        customer_id = payment.get("customer_id")
+
+        new_tier = SQUARE_TIER_BY_AMOUNT.get(amount_cents)
+        if not new_tier:
+            # Unrecognised amount — log and return 200 so Square stops retrying
+            print(f"[FeeScout] Unknown payment amount {amount_cents} cents from {email}")
+            return {"received": True}
+
+        _upgrade_user_by_email(email, new_tier, customer_id)
+
+    # ---- subscription.created ---------------------------------------------
+    # Fires when a recurring subscription is first activated.
+    elif event_type == "subscription.created":
+        subscription = payload.get("data", {}).get("object", {}).get("subscription", {})
+        customer_id = subscription.get("customer_id")
+        # Square doesn't include email in the subscription event — look it up
+        # via a lightweight call to the Customers API if we have the access token.
+        # For sandbox we rely on payment.completed covering the same transaction.
+        print(f"[FeeScout] subscription.created for customer {customer_id} (handled via payment.completed)")
+
+    # Always return 200 — Square retries on any non-2xx response
+    return {"received": True}
 
 
 # ---------------------------------------------------------------------------
