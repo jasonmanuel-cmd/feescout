@@ -1,38 +1,8 @@
 {
-  "builds": [
-    {
-      "src": "api/index.py",
-      "use": "@vercel/python"
-    },
-    {
-      "src": "*.{html,png}",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "dashboard.html",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "templates/**",
-      "use": "@vercel/static"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "api/index.py"
-    },
-    {
-      "src": "/dashboard.html",
-      "dest": "dashboard.html"
-    },
-    {
-      "src": "/templates/(.*)",
-      "dest": "templates/$1"
-    },
-    {
-      "src": "/",
-      "dest": "index.html"
-    }
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index.py" },
+    { "source": "/dashboard", "destination": "/dashboard.html" },
+    { "source": "/templates/(.*)", "destination": "/templates/$1" },
+    { "source": "/", "destination": "/index.html" }
   ]
 }
