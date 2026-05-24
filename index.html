@@ -14,13 +14,17 @@
 
     <style>
         :root {
-            --electric-blue: #3B82F6;
-            --slate-gray: #1F2937;
-            --neon-green: #10B981;
+            --electric-green: #00D68F;
+            --electric-green-hover: #00B87A;
+            --charcoal-deep: #0A0A0F;
+            --charcoal-card: #14141D;
+            --charcoal-border: #1E1E2A;
+            --charcoal-hover: #1A1A28;
+            --text-primary: #FFFFFF;
+            --text-secondary: #8A8A9A;
+            --text-muted: #5A5A6A;
             --warning-gold: #F59E0B;
-            --light-gray: #F3F4F6;
-            --medium-gray: #9CA3AF;
-            --dark-gray: #111827;
+            --danger-red: #EF4444;
         }
 
         * { 
@@ -31,8 +35,8 @@
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 50%, #764ba2 100%);
-            color: #333;
+            background: var(--charcoal-deep);
+            color: var(--text-primary);
             line-height: 1.6;
         }
 
@@ -44,11 +48,12 @@
 
         /* Header */
         header {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            padding: 20px 0;
+            background: rgba(20, 20, 29, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--charcoal-border);
+            padding: 16px 0;
             margin-bottom: 40px;
-            border-radius: 12px;
+            border-radius: 16px;
         }
 
         .header-content {
@@ -57,7 +62,7 @@
             align-items: center;
             max-width: 1160px;
             margin: 0 auto;
-            padding: 0 20px;
+            padding: 0 24px;
         }
 
         .logo {
@@ -65,22 +70,24 @@
         }
 
         nav a {
-            color: white;
+            color: var(--text-secondary);
             text-decoration: none;
             margin-left: 30px;
             font-weight: 500;
-            transition: opacity 0.3s;
+            font-size: 15px;
+            transition: color 0.3s;
         }
 
         nav a:hover {
-            opacity: 0.8;
+            color: var(--electric-green);
         }
 
         /* Hero Section */
         .hero {
             text-align: center;
-            color: white;
+            color: var(--text-primary);
             margin-bottom: 60px;
+            padding-top: 20px;
         }
 
         h1 { 
@@ -88,25 +95,29 @@
             margin-bottom: 16px;
             font-weight: 700;
             letter-spacing: -1px;
+            background: linear-gradient(135deg, #FFFFFF 0%, var(--electric-green) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .tagline { 
             font-size: 24px; 
-            opacity: 0.95;
-            font-weight: 500;
+            color: var(--text-secondary);
+            font-weight: 400;
         }
 
         /* Savings Calculator Card */
         .savings-calc {
-            background: white;
-            border-radius: 12px;
+            background: var(--charcoal-card);
+            border: 1px solid var(--charcoal-border);
+            border-radius: 16px;
             padding: 40px;
             margin-bottom: 30px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
         }
 
         .savings-calc h2 {
-            color: var(--slate-gray);
+            color: var(--text-primary);
             font-size: 28px;
             margin-bottom: 20px;
         }
@@ -119,20 +130,22 @@
         }
 
         .chain-comparison {
-            background: var(--light-gray);
-            padding: 20px;
-            border-radius: 8px;
-            border-left: 4px solid var(--electric-blue);
+            background: var(--charcoal-hover);
+            border: 1px solid var(--charcoal-border);
+            padding: 24px;
+            border-radius: 12px;
+            border-left: 4px solid var(--text-muted);
         }
 
         .chain-comparison.winner {
-            border-left-color: var(--neon-green);
-            background: #ECFDF5;
+            border-left-color: var(--electric-green);
+            border-color: var(--electric-green);
+            background: rgba(0, 214, 143, 0.08);
         }
 
         .chain-name-display {
             font-weight: 600;
-            color: var(--slate-gray);
+            color: var(--text-primary);
             margin-bottom: 10px;
             text-transform: capitalize;
         }
@@ -141,26 +154,26 @@
             font-family: 'JetBrains Mono', monospace;
             font-size: 32px;
             font-weight: 500;
-            color: var(--neon-green);
+            color: var(--electric-green);
         }
 
         .savings-badge {
             display: inline-block;
             background: var(--warning-gold);
-            color: white;
+            color: #000;
             padding: 4px 12px;
-            border-radius: 4px;
-            font-weight: 600;
-            font-size: 14px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 13px;
             margin-top: 8px;
         }
 
         /* Fee Table */
         .fee-table {
-            background: white;
-            border-radius: 12px;
+            background: var(--charcoal-card);
+            border: 1px solid var(--charcoal-border);
+            border-radius: 16px;
             overflow: hidden;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
             margin-bottom: 40px;
         }
 
@@ -170,28 +183,30 @@
         }
 
         th {
-            background: var(--electric-blue);
-            color: white;
+            background: rgba(0, 214, 143, 0.15);
+            color: var(--electric-green);
             padding: 20px;
             text-align: left;
             font-weight: 600;
-            font-size: 14px;
+            font-size: 13px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--charcoal-border);
         }
 
         td {
             padding: 20px;
-            border-bottom: 1px solid #E5E7EB;
+            border-bottom: 1px solid var(--charcoal-border);
+            color: var(--text-secondary);
         }
 
         tr:hover { 
-            background: var(--light-gray); 
+            background: var(--charcoal-hover); 
         }
 
         .rank {
             font-weight: 700;
-            color: var(--electric-blue);
+            color: var(--electric-green);
             font-size: 24px;
             font-family: 'JetBrains Mono', monospace;
         }
@@ -199,11 +214,11 @@
         .chain-name {
             text-transform: capitalize;
             font-weight: 600;
-            color: var(--slate-gray);
+            color: var(--text-primary);
         }
 
         .fee-usd {
-            color: var(--neon-green);
+            color: var(--electric-green);
             font-weight: 600;
             font-family: 'JetBrains Mono', monospace;
         }
@@ -216,10 +231,10 @@
         /* CTA Button */
         .cta-button {
             display: inline-block;
-            background: var(--neon-green);
-            color: white;
+            background: var(--electric-green);
+            color: #000;
             padding: 16px 48px;
-            border-radius: 8px;
+            border-radius: 10px;
             text-decoration: none;
             font-weight: 700;
             font-size: 18px;
@@ -230,17 +245,22 @@
         }
 
         .cta-button:hover {
-            background: #059669;
+            background: var(--electric-green-hover);
             transform: translateY(-3px);
-            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4);
+            box-shadow: 0 12px 40px rgba(0, 214, 143, 0.3);
         }
 
         .cta-button.secondary {
-            background: var(--electric-blue);
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--charcoal-border);
         }
 
         .cta-button.secondary:hover {
-            background: #2563EB;
+            background: var(--charcoal-hover);
+            border-color: var(--electric-green);
+            color: var(--electric-green);
+            box-shadow: none;
         }
 
         /* Pricing Grid */
@@ -251,7 +271,7 @@
 
         .pricing-section h2 {
             text-align: center;
-            color: white;
+            color: var(--text-primary);
             font-size: 42px;
             margin-bottom: 40px;
         }
@@ -263,38 +283,44 @@
         }
 
         .pricing-card {
-            background: white;
-            border-radius: 12px;
+            background: var(--charcoal-card);
+            border: 1px solid var(--charcoal-border);
+            border-radius: 16px;
             padding: 40px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
-            transition: transform 0.3s;
+            transition: all 0.3s;
             position: relative;
         }
 
         .pricing-card:hover {
-            transform: translateY(-10px);
+            transform: translateY(-8px);
+            border-color: var(--text-muted);
         }
 
         .pricing-card.featured {
-            border: 3px solid var(--neon-green);
+            border: 2px solid var(--electric-green);
             transform: scale(1.05);
+        }
+
+        .pricing-card.featured:hover {
+            box-shadow: 0 20px 60px rgba(0, 214, 143, 0.15);
         }
 
         .popular-badge {
             position: absolute;
-            top: -15px;
-            right: 20px;
-            background: var(--neon-green);
-            color: white;
+            top: -14px;
+            right: 24px;
+            background: var(--electric-green);
+            color: #000;
             padding: 6px 20px;
             border-radius: 20px;
             font-weight: 700;
             font-size: 12px;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .pricing-card h3 {
-            color: var(--slate-gray);
+            color: var(--text-primary);
             font-size: 24px;
             margin-bottom: 10px;
         }
@@ -302,14 +328,14 @@
         .price {
             font-size: 56px;
             font-weight: 700;
-            color: var(--electric-blue);
+            color: var(--electric-green);
             margin: 20px 0;
             font-family: 'JetBrains Mono', monospace;
         }
 
         .price-period {
             font-size: 18px;
-            color: var(--medium-gray);
+            color: var(--text-muted);
             font-weight: 400;
         }
 
@@ -320,7 +346,7 @@
 
         .features li {
             padding: 12px 0;
-            color: #4B5563;
+            color: var(--text-secondary);
             font-size: 16px;
             display: flex;
             align-items: center;
@@ -328,7 +354,7 @@
 
         .features li:before {
             content: "✓";
-            color: var(--neon-green);
+            color: var(--electric-green);
             font-weight: bold;
             margin-right: 12px;
             font-size: 20px;
@@ -343,35 +369,59 @@
         }
 
         .stat-card {
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(10px);
+            background: var(--charcoal-card);
+            border: 1px solid var(--charcoal-border);
             padding: 30px;
-            border-radius: 12px;
+            border-radius: 16px;
             text-align: center;
-            color: white;
         }
 
         .stat-number {
             font-size: 48px;
             font-weight: 700;
             font-family: 'JetBrains Mono', monospace;
-            color: var(--neon-green);
-            text-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
+            color: var(--electric-green);
+            text-shadow: 0 2px 20px rgba(0, 214, 143, 0.2);
         }
 
         .stat-label {
             font-size: 16px;
             margin-top: 8px;
-            opacity: 0.9;
+            color: var(--text-secondary);
+        }
+
+        /* Highlight Banner */
+        .highlight-banner {
+            background: var(--charcoal-card);
+            border: 1px solid var(--charcoal-border);
+            backdrop-filter: blur(10px);
+            padding: 40px;
+            border-radius: 16px;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .highlight-banner h2 {
+            color: var(--text-primary);
+            margin-bottom: 16px;
+        }
+
+        .highlight-banner p {
+            font-size: 18px;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
         }
 
         /* Footer */
         footer {
             text-align: center;
-            color: white;
             padding: 40px 0;
             margin-top: 60px;
-            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            border-top: 1px solid var(--charcoal-border);
+        }
+
+        footer p {
+            color: var(--text-muted);
         }
 
         /* Responsive */
@@ -379,6 +429,8 @@
             h1 { font-size: 36px; }
             .tagline { font-size: 18px; }
             .pricing-grid { grid-template-columns: 1fr; }
+            .pricing-card.featured { transform: none; }
+            .pricing-card.featured:hover { transform: translateY(-8px); }
             .calc-example { grid-template-columns: 1fr; }
         }
 
@@ -405,7 +457,7 @@
         }
         .toast-error { background: #ef4444; }
         .toast-warning { background: #f59e0b; color: #000; }
-        .toast-success { background: #10b981; }
+        .toast-success { background: var(--electric-green); }
         .toast-exit { animation: toast-out 0.3s ease forwards; }
         @keyframes toast-in { from { opacity:0; transform:translateX(50px); } to { opacity:1; transform:translateX(0); } }
         @keyframes toast-out { from { opacity:1; } to { opacity:0; transform:translateY(-20px); } }
@@ -414,8 +466,8 @@
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.6);
-            backdrop-filter: blur(4px);
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
             z-index: 9999;
             display: flex;
             align-items: center;
@@ -424,29 +476,30 @@
             display: none;
         }
         .modal {
-            background: #fff;
+            background: var(--charcoal-card);
+            border: 1px solid var(--charcoal-border);
             border-radius: 16px;
             max-width: 640px;
             width: 100%;
             max-height: 80vh;
             overflow-y: auto;
-            box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+            box-shadow: 0 25px 60px rgba(0,0,0,0.5);
         }
         .modal-header {
             padding: 24px 28px 16px;
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 1px solid var(--charcoal-border);
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
-        .modal-header h2 { margin: 0; color: #0f172a; font-size: 22px; }
+        .modal-header h2 { margin: 0; color: var(--text-primary); font-size: 22px; }
         .modal-close {
             background: none; border: none; font-size: 28px; cursor: pointer;
-            color: #94a3b8; line-height: 1; padding: 0;
+            color: var(--text-muted); line-height: 1; padding: 0;
         }
-        .modal-close:hover { color: #0f172a; }
-        .modal-body { padding: 20px 28px 28px; color: #334155; line-height: 1.7; }
-        .modal-body h3 { color: #0f172a; margin: 20px 0 8px; font-size: 16px; }
+        .modal-close:hover { color: var(--text-primary); }
+        .modal-body { padding: 20px 28px 28px; color: var(--text-secondary); line-height: 1.7; }
+        .modal-body h3 { color: var(--text-primary); margin: 20px 0 8px; font-size: 16px; }
         .modal-body h3:first-child { margin-top: 0; }
         .modal-body p { margin: 0 0 12px; }
     </style>
@@ -552,13 +605,13 @@
 
         <div class="savings-calc">
             <h2>💰 Live Savings Calculator</h2>
-            <p style="color: #6B7280; margin-bottom: 20px;">Moving <strong>$10,000 USDT</strong> right now:</p>
+            <p style="color: var(--text-secondary); margin-bottom: 20px;">Moving <strong>$10,000 USDT</strong> right now:</p>
 
             <div class="calc-example">
                 <div class="chain-comparison">
                     <div class="chain-name-display">Ethereum</div>
                     <div class="fee-amount">$12.50</div>
-                    <div style="color: #6B7280; margin-top: 8px;">Standard gas fee</div>
+                    <div style="color: var(--text-muted); margin-top: 8px;">Standard gas fee</div>
                 </div>
 
                 <div class="chain-comparison winner">
@@ -618,9 +671,9 @@
             </table>
         </div>
 
-        <div style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); padding: 40px; border-radius: 12px; text-align: center; color: white; margin-bottom: 40px;">
-            <h2 style="color: white; margin-bottom: 16px;">🔒 Unlock All 41 Chains</h2>
-            <p style="font-size: 18px; opacity: 0.95; margin-bottom: 20px;">See complete rankings, historical data, real-time alerts, and API access</p>
+        <div class="highlight-banner">
+            <h2>🔒 Unlock All 41 Chains</h2>
+            <p>See complete rankings, historical data, real-time alerts, and API access</p>
             <a href="#pricing" class="cta-button">View Pricing Plans →</a>
         </div>
 
@@ -637,7 +690,7 @@
                         <li>Basic savings calculator</li>
                         <li>Community support</li>
                     </ul>
-                    <button class="cta-button secondary" style="width: 100%;" onclick="alert('Free tier is active! Sign up for paid plans coming soon.')">Get Started Free</button>
+                    <button class="cta-button secondary" onclick="alert('Free tier is active! Sign up for paid plans coming soon.')">Get Started Free</button>
                 </div>
 
                 <div class="pricing-card featured">
@@ -680,8 +733,8 @@
             <p style="margin-bottom: 10px;">© 2026 FeeScout by Chaotically Organized AI</p>
             <p style="opacity: 0.8; font-size: 14px;">Find the cheapest chain, every time • API • Docs • Twitter • Support</p>
             <p style="margin-top: 15px; font-size: 13px; opacity: 0.6;">
-                <a href="#" onclick="document.getElementById('tos-modal').style.display='flex'; return false;" style="color: #94a3b8; text-decoration: none; margin: 0 10px;">Terms of Service</a>
-                <a href="#" onclick="document.getElementById('privacy-modal').style.display='flex'; return false;" style="color: #94a3b8; text-decoration: none; margin: 0 10px;">Privacy Policy</a>
+                <a href="#" onclick="document.getElementById('tos-modal').style.display='flex'; return false;" style="color: var(--text-muted); text-decoration: none; margin: 0 10px;">Terms of Service</a>
+                <a href="#" onclick="document.getElementById('privacy-modal').style.display='flex'; return false;" style="color: var(--text-muted); text-decoration: none; margin: 0 10px;">Privacy Policy</a>
             </p>
         </footer>
     </div>
