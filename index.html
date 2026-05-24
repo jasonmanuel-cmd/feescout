@@ -378,9 +378,139 @@
             .pricing-grid { grid-template-columns: 1fr; }
             .calc-example { grid-template-columns: 1fr; }
         }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .toast {
+            padding: 14px 20px;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 500;
+            max-width: 380px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+            animation: toast-in 0.3s ease;
+            cursor: pointer;
+        }
+        .toast-error { background: #ef4444; }
+        .toast-warning { background: #f59e0b; color: #000; }
+        .toast-success { background: #10b981; }
+        .toast-exit { animation: toast-out 0.3s ease forwards; }
+        @keyframes toast-in { from { opacity:0; transform:translateX(50px); } to { opacity:1; transform:translateX(0); } }
+        @keyframes toast-out { from { opacity:1; } to { opacity:0; transform:translateY(-20px); } }
+
+        /* Modal Overlay */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            display: none;
+        }
+        .modal {
+            background: #fff;
+            border-radius: 16px;
+            max-width: 640px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+        }
+        .modal-header {
+            padding: 24px 28px 16px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h2 { margin: 0; color: #0f172a; font-size: 22px; }
+        .modal-close {
+            background: none; border: none; font-size: 28px; cursor: pointer;
+            color: #94a3b8; line-height: 1; padding: 0;
+        }
+        .modal-close:hover { color: #0f172a; }
+        .modal-body { padding: 20px 28px 28px; color: #334155; line-height: 1.7; }
+        .modal-body h3 { color: #0f172a; margin: 20px 0 8px; font-size: 16px; }
+        .modal-body h3:first-child { margin-top: 0; }
+        .modal-body p { margin: 0 0 12px; }
     </style>
 </head>
 <body>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Terms of Service Modal -->
+    <div id="tos-modal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)this.style.display='none'">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Terms of Service</h2>
+                <button class="modal-close" onclick="document.getElementById('tos-modal').style.display='none'">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p><em>Last updated: May 2026</em></p>
+                <h3>1. Acceptance of Terms</h3>
+                <p>By accessing or using FeeScout ("Service"), you agree to be bound by these Terms of Service. If you do not agree, do not use the Service.</p>
+                <h3>2. Description of Service</h3>
+                <p>FeeScout provides real-time cryptocurrency gas fee data across multiple blockchain networks via an API and web interface.</p>
+                <h3>3. Subscription Plans</h3>
+                <p>FeeScout offers Free, Hobbyist ($39/month), and Trader ($99/month) plans. Each plan has defined rate limits. Subscriptions are billed monthly through Square. You may cancel at any time; no partial-month refunds.</p>
+                <h3>4. Fair Use</h3>
+                <p>You agree not to abuse, overload, or disrupt the Service. We reserve the right to terminate accounts that violate rate limits or use the Service for malicious purposes.</p>
+                <h3>5. Data Accuracy</h3>
+                <p>Gas fee data is sourced from third-party blockchain nodes. We do not guarantee 100% accuracy or uptime. Use data at your own risk.</p>
+                <h3>6. Limitation of Liability</h3>
+                <p>FeeScout is provided "as is" without warranties. We are not liable for financial losses from reliance on gas fee data.</p>
+                <h3>7. Changes to Terms</h3>
+                <p>We may update these terms at any time. Continued use after changes constitutes acceptance.</p>
+                <h3>8. Contact</h3>
+                <p>Contact: support@feescout.com</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Privacy Policy Modal -->
+    <div id="privacy-modal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)this.style.display='none'">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Privacy Policy</h2>
+                <button class="modal-close" onclick="document.getElementById('privacy-modal').style.display='none'">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p><em>Last updated: May 2026</em></p>
+                <h3>1. Information We Collect</h3>
+                <p>We collect your email when you sign up for an API key. Payment info is processed by Square -- we do not store credit card numbers.</p>
+                <h3>2. How We Use Your Info</h3>
+                <p>Your email delivers your API key, manages your subscription, and sends service announcements. We do not sell or share personal info.</p>
+                <h3>3. API Key Data</h3>
+                <p>We store your API key, subscription tier, and usage counts to provide and protect the Service.</p>
+                <h3>4. Cookies</h3>
+                <p>Our site may use cookies for session state. No third-party tracking cookies are used.</p>
+                <h3>5. Data Security</h3>
+                <p>We implement reasonable security measures. No internet transmission is 100% secure.</p>
+                <h3>6. Your Rights</h3>
+                <p>Request account deletion anytime at support@feescout.com.</p>
+                <h3>7. Changes</h3>
+                <p>We may update this policy. Continued use after changes constitutes acceptance.</p>
+                <h3>8. Contact</h3>
+                <p>Contact: support@feescout.com</p>
+            </div>
+        </div>
+    </div>
+
     <div class="container">
         <header>
             <div class="header-content">
@@ -511,7 +641,7 @@
                         <li>Basic savings calculator</li>
                         <li>Community support</li>
                     </ul>
-                    <button class="cta-button secondary" style="width: 100%;">Get Started Free</button>
+                    <button class="cta-button secondary" style="width: 100%;" onclick="alert('Free tier is active! Sign up for paid plans coming soon.')">Get Started Free</button>
                 </div>
 
                 <div class="pricing-card featured">
@@ -525,7 +655,10 @@
                         <li>30-day historical data</li>
                         <li>100k API calls/month</li>
                     </ul>
-                    <button class="cta-button" style="width: 100%;">Subscribe Now</button>
+                    <form action="/api/create-checkout" method="POST">
+                        <input type="hidden" name="plan" value="hobbyist">
+                        <button type="submit" class="cta-button" style="width: 100%;">Subscribe Now</button>
+                    </form>
                 </div>
 
                 <div class="pricing-card">
@@ -539,7 +672,10 @@
                         <li>Webhook alerts (unlimited)</li>
                         <li>Priority support</li>
                     </ul>
-                    <button class="cta-button secondary" style="width: 100%;">Upgrade to Trader</button>
+                    <form action="/api/create-checkout" method="POST">
+                        <input type="hidden" name="plan" value="trader">
+                        <button type="submit" class="cta-button secondary" style="width: 100%;">Upgrade to Trader</button>
+                    </form>
                 </div>
             </div>
         </div>
@@ -547,42 +683,99 @@
         <footer>
             <p style="margin-bottom: 10px;">© 2026 FeeScout by Chaotically Organized AI</p>
             <p style="opacity: 0.8; font-size: 14px;">Find the cheapest chain, every time • API • Docs • Twitter • Support</p>
+            <p style="margin-top: 15px; font-size: 13px; opacity: 0.6;">
+                <a href="#" onclick="document.getElementById('tos-modal').style.display='flex'; return false;" style="color: #94a3b8; text-decoration: none; margin: 0 10px;">Terms of Service</a>
+                <a href="#" onclick="document.getElementById('privacy-modal').style.display='flex'; return false;" style="color: #94a3b8; text-decoration: none; margin: 0 10px;">Privacy Policy</a>
+            </p>
         </footer>
     </div>
 
     <script>
+        // Toast notification system
+        function showToast(message, type = 'error') {
+            let container = document.getElementById('toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toast-container';
+                container.className = 'toast-container';
+                document.body.appendChild(container);
+            }
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('toast-exit');
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
         // Live fee data integration (connects to your Python API)
-        async function loadGasFees() {
-            try {
-                const response = await fetch('http://localhost:5000/api/gas-fees/latest');
-                const result = await response.json();
+        async function loadGasFees(retries = 2) {
+            const tbody = document.getElementById('feeTableBody');
+            
+            for (let attempt = 0; attempt <= retries; attempt++) {
+                try {
+                    const response = await fetch('/api/gas-fees/latest');
 
-                if (!result.success) throw new Error('API error');
+                    if (response.status === 502 || response.status === 503 || response.status === 504) {
+                        throw new Error(`Server temporarily unavailable (HTTP ${response.status})`);
+                    }
+                    if (!response.ok) {
+                        throw new Error(`HTTP error ${response.status}`);
+                    }
 
-                const fees = result.data;
-                const tbody = document.getElementById('feeTableBody');
-                tbody.innerHTML = '';
+                    const result = await response.json();
+                    if (!result.success) throw new Error(result.error || 'API error');
 
-                const ethFee = fees.find(f => f.chain === 'ethereum')?.fee_usd || 12.50;
-                const displayFees = fees.slice(0, 5);
+                    const fees = result.data;
+                    if (!fees || !fees.length) throw new Error('No fee data available');
 
-                displayFees.forEach((fee, index) => {
-                    const savings = ethFee - fee.fee_usd;
-                    const savingsPct = ((savings / ethFee) * 100).toFixed(2);
+                    if (tbody) tbody.innerHTML = '';
 
-                    const row = `
-                        <tr>
-                            <td class="rank">#${index + 1}</td>
-                            <td class="chain-name">${fee.chain}</td>
-                            <td class="fee-usd">$${fee.fee_usd.toFixed(4)}</td>
-                            <td class="savings">${savingsPct > 0 ? `Save ${savingsPct}%` : 'N/A'}</td>
-                        </tr>
-                    `;
-                    tbody.innerHTML += row;
-                });
+                    const ethFee = fees.find(f => f.chain === 'ethereum')?.fee_usd || 12.50;
+                    const displayFees = fees.slice(0, 5);
 
-            } catch (error) {
-                console.log('Using demo data (connect backend for live data)');
+                    displayFees.forEach((fee, index) => {
+                        const savings = ethFee - fee.fee_usd;
+                        const savingsPct = ((savings / ethFee) * 100).toFixed(2);
+                        const row = `
+                            <tr>
+                                <td class="rank">#${index + 1}</td>
+                                <td class="chain-name">${fee.chain}</td>
+                                <td class="fee-usd">$${fee.fee_usd.toFixed(4)}</td>
+                                <td class="savings">${savingsPct > 0 ? `Save ${savingsPct}%` : 'N/A'}</td>
+                            </tr>
+                        `;
+                        if (tbody) tbody.innerHTML += row;
+                    });
+
+                    // Show warning if fewer than expected chains returned
+                    if (fees.length < 15) {
+                        showToast(`Partial data: ${fees.length} of 22+ chains available`, 'warning');
+                    }
+
+                    return; // success
+
+                } catch (error) {
+                    console.warn(`Gas fees fetch attempt ${attempt + 1}/${retries + 1} failed:`, error.message);
+
+                    if (attempt < retries) {
+                        // Wait 1.5s, 3s, etc. between retries
+                        await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
+                    } else {
+                        // All retries exhausted
+                        if (tbody) {
+                            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:2rem;color:#ef4444;">
+                                <div style="font-size:2rem;margin-bottom:0.5rem;">⚠️</div>
+                                <div style="font-weight:600;margin-bottom:0.3rem;">Temporarily Unavailable</div>
+                                <div style="font-size:0.85rem;opacity:0.8;margin-bottom:1rem;">Couldn't load live gas data</div>
+                                <button onclick="loadGasFees()" style="padding:0.5rem 1.5rem;background:#22d3ee;color:#000;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Try Again</button>
+                            </td></tr>`;
+                        }
+                        showToast('Failed to load gas fees. Please try again.', 'error');
+                    }
+                }
             }
         }
 
