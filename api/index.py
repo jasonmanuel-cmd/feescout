@@ -963,6 +963,76 @@ async def serve_logo():
     return FileResponse(os.path.join(BASE_DIR, "feescoutlogo.png"), media_type="image/png")
 
 
+# ---------------------------------------------------------------------------
+# SEO Pages — Static HTML pages for search engine optimization
+# ---------------------------------------------------------------------------
+_SEO_PAGES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "pages", "seo")
+
+_SEO_ROUTES = {
+    "ethereum-gas-tracker": "ethereum-gas-tracker.html",
+    "bitcoin-fee-tracker": "bitcoin-fee-tracker.html",
+    "polygon-gas-tracker": "polygon-gas-tracker.html",
+    "arbitrum-gas-tracker": "arbitrum-gas-tracker.html",
+    "solana-fee-tracker": "solana-fee-tracker.html",
+    "gas-fee-comparison": "gas-fee-comparison.html",
+    "best-time-to-buy-crypto": "best-time-to-buy-crypto.html",
+    "nft-gas-fees": "nft-gas-fees.html",
+    "defi-gas-optimization": "defi-gas-optimization.html",
+    "crypto-gas-fee-api": "crypto-gas-fee-api.html",
+    "best-time-to-transact": "best-time-to-transact.html",
+}
+
+
+def _serve_seo_page(html_file: str) -> HTMLResponse:
+    filepath = os.path.join(_SEO_PAGES_DIR, html_file)
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Page not found")
+
+
+for _slug, _file in _SEO_ROUTES.items():
+    def _make_handler(f):
+        async def _handler():
+            return _serve_seo_page(f)
+        return _handler
+    app.get(f"/{_slug}", response_class=HTMLResponse, include_in_schema=False)(_make_handler(_file))
+
+
+@app.get("/home", response_class=HTMLResponse, include_in_schema=False)
+async def home_page():
+    landing_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "pages", "landing-page.html")
+    try:
+        with open(landing_path, "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Landing page not found")
+
+
+@app.get("/sitemap.xml", response_class=HTMLResponse, include_in_schema=False)
+async def sitemap():
+    sitemap_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "pages", "sitemap.xml")
+    try:
+        with open(sitemap_path, "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read(), media_type="application/xml")
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Sitemap not found")
+
+
+@app.get("/robots.txt", response_class=HTMLResponse, include_in_schema=False)
+async def robots():
+    robots_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "pages", "robots.txt")
+    try:
+        with open(robots_path, "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read(), media_type="text/plain")
+    except FileNotFoundError:
+        return HTMLResponse(content="User-agent: *\nAllow: /", media_type="text/plain")
+
+
+# ---------------------------------------------------------------------------
+# Health Check
+# ---------------------------------------------------------------------------
 @app.get("/api/health")
 async def health_check():
     """

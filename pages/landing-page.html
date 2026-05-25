@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FeeScout — Real-Time Crypto Gas Fee Monitor | Save on Every Transaction</title>
+    <meta name="description" content="Track gas fees across 25+ blockchains in real-time. Never overpay for a transaction again. Free tier available. Plans from $39/mo.">
+    <meta name="keywords" content="crypto gas fees, ethereum gas tracker, bitcoin transaction fees, gas price monitor, DeFi tools, crypto trading tools, blockchain fees">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="FeeScout — Stop Overpaying on Gas Fees">
+    <meta property="og:description" content="Real-time gas fee monitoring across 25+ blockchains. Save money on every crypto transaction.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://feescout.bond">
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="FeeScout — Real-Time Crypto Gas Fee Monitor">
+    <meta name="twitter:description" content="Track gas fees across 25+ blockchains. Never overpay again.">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --green: #00D68F;
+            --green-dark: #00B87A;
+            --bg: #07070C;
+            --card: #111118;
+            --border: #1A1A26;
+            --text: #FFFFFF;
+            --text-sec: #8A8A9A;
+            --text-muted: #4A4A5A;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+            --blue: #3B82F6;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+        .container { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
+        
+        /* Navigation */
+        nav {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 20px 0; border-bottom: 1px solid var(--border);
+        }
+        .logo { height: 48px; }
+        .nav-links { display: flex; gap: 32px; align-items: center; }
+        .nav-links a { color: var(--text-sec); text-decoration: none; font-size: 14px; font-weight: 500; }
+        .nav-links a:hover { color: var(--green); }
+        .btn {
+            display: inline-block; padding: 12px 28px; border-radius: 10px;
+            font-weight: 600; font-size: 14px; text-decoration: none;
+            transition: all 0.2s; cursor: pointer; border: none;
+        }
+        .btn-primary { background: var(--green); color: #000; }
+        .btn-primary:hover { background: var(--green-dark); transform: translateY(-1px); }
+        .btn-secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+        .btn-secondary:hover { border-color: var(--green); }
+        
+        /* Hero */
+        .hero { padding: 80px 0 60px; text-align: center; }
+        .hero h1 {
+            font-size: 56px; font-weight: 900; line-height: 1.1;
+            margin-bottom: 24px; letter-spacing: -1px;
+        }
+        .hero h1 span { color: var(--green); }
+        .hero p {
+            font-size: 20px; color: var(--text-sec); max-width: 600px;
+            margin: 0 auto 40px;
+        }
+        .hero-buttons { display: flex; gap: 16px; justify-content: center; }
+        
+        /* Stats */
+        .stats {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;
+            padding: 40px 0; border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border); margin-bottom: 60px;
+        }
+        .stat { text-align: center; }
+        .stat-value { font-size: 32px; font-weight: 800; color: var(--green); }
+        .stat-label { font-size: 13px; color: var(--text-sec); margin-top: 4px; }
+        
+        /* Live Fee Ticker */
+        .fee-ticker {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 16px; padding: 24px; margin-bottom: 60px;
+        }
+        .fee-ticker h3 { font-size: 14px; color: var(--text-sec); margin-bottom: 16px; text-transform: uppercase; letter-spacing: 1px; }
+        .fee-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+        .fee-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 16px; background: var(--bg); border-radius: 8px;
+        }
+        .fee-chain { font-weight: 600; font-size: 14px; }
+        .fee-value { font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+        .fee-low { color: var(--green); }
+        .fee-med { color: var(--warning); }
+        .fee-high { color: var(--danger); }
+        
+        /* Features */
+        .features { padding: 60px 0; }
+        .section-title { text-align: center; margin-bottom: 48px; }
+        .section-title h2 { font-size: 36px; font-weight: 800; margin-bottom: 12px; }
+        .section-title p { color: var(--text-sec); font-size: 18px; }
+        .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+        .feature {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 16px; padding: 32px;
+        }
+        .feature-icon { font-size: 32px; margin-bottom: 16px; }
+        .feature h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+        .feature p { color: var(--text-sec); font-size: 14px; }
+        
+        /* Pricing */
+        .pricing { padding: 60px 0; }
+        .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+        .pricing-card {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 16px; padding: 32px; position: relative;
+        }
+        .pricing-card.popular { border-color: var(--green); }
+        .popular-badge {
+            position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+            background: var(--green); color: #000; padding: 4px 16px;
+            border-radius: 20px; font-size: 12px; font-weight: 700;
+        }
+        .pricing-card h3 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+        .pricing-card .price { font-size: 48px; font-weight: 900; margin: 16px 0; }
+        .pricing-card .price span { font-size: 16px; color: var(--text-sec); font-weight: 400; }
+        .pricing-features { list-style: none; margin: 24px 0; }
+        .pricing-features li { padding: 8px 0; font-size: 14px; color: var(--text-sec); }
+        .pricing-features li::before { content: "✓ "; color: var(--green); font-weight: 700; }
+        
+        /* Testimonials */
+        .testimonials { padding: 60px 0; }
+        .testimonial-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+        .testimonial {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 16px; padding: 24px;
+        }
+        .testimonial p { font-size: 14px; color: var(--text-sec); margin-bottom: 16px; font-style: italic; }
+        .testimonial-author { font-weight: 600; font-size: 14px; }
+        .testimonial-role { font-size: 12px; color: var(--text-muted); }
+        
+        /* CTA */
+        .cta {
+            text-align: center; padding: 80px 0;
+            background: linear-gradient(180deg, var(--card) 0%, var(--bg) 100%);
+            border-radius: 24px; margin: 60px 0;
+        }
+        .cta h2 { font-size: 40px; font-weight: 800; margin-bottom: 16px; }
+        .cta p { color: var(--text-sec); font-size: 18px; margin-bottom: 32px; }
+        
+        /* Footer */
+        footer {
+            padding: 40px 0; border-top: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        footer p { color: var(--text-muted); font-size: 13px; }
+        footer a { color: var(--text-sec); text-decoration: none; font-size: 13px; margin-left: 24px; }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 36px; }
+            .stats { grid-template-columns: repeat(2, 1fr); }
+            .feature-grid, .pricing-grid, .testimonial-grid { grid-template-columns: 1fr; }
+            .hero-buttons { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Navigation -->
+<div class="container">
+    <nav>
+        <img src="feescoutlogo.png" alt="FeeScout" class="logo" onerror="this.style.display='none'">
+        <div class="nav-links">
+            <a href="#features">Features</a>
+            <a href="#pricing">Pricing</a>
+            <a href="/dashboard">Dashboard</a>
+            <a href="#pricing" class="btn btn-primary">Start Free</a>
+        </div>
+    </nav>
+</div>
+
+<!-- Hero -->
+<div class="container">
+    <section class="hero">
+        <h1>Stop <span>Overpaying</span> on Crypto Gas Fees</h1>
+        <p>Real-time gas fee monitoring across 25+ blockchains. Know the perfect moment to transact — save money on every single transaction.</p>
+        <div class="hero-buttons">
+            <a href="https://square.link/u/YjHtGg2s" class="btn btn-primary">Start Free Trial →</a>
+            <a href="#features" class="btn btn-secondary">See How It Works</a>
+        </div>
+    </section>
+    
+    <!-- Stats -->
+    <section class="stats">
+        <div class="stat">
+            <div class="stat-value">25+</div>
+            <div class="stat-label">Blockchains Tracked</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">60s</div>
+            <div class="stat-label">Update Frequency</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">100K</div>
+            <div class="stat-label">API Calls / Day (Trader)</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">99.9%</div>
+            <div class="stat-label">Uptime</div>
+        </div>
+    </section>
+    
+    <!-- Live Fee Ticker -->
+    <section class="fee-ticker">
+        <h3>🔴 Live Gas Fees</h3>
+        <div class="fee-grid" id="fee-grid">
+            <div class="fee-item">
+                <span class="fee-chain">Ethereum</span>
+                <span class="fee-value fee-med">Loading...</span>
+            </div>
+            <div class="fee-item">
+                <span class="fee-chain">Bitcoin</span>
+                <span class="fee-value fee-med">Loading...</span>
+            </div>
+            <div class="fee-item">
+                <span class="fee-chain">Polygon</span>
+                <span class="fee-value fee-med">Loading...</span>
+            </div>
+            <div class="fee-item">
+                <span class="fee-chain">Arbitrum</span>
+                <span class="fee-value fee-med">Loading...</span>
+            </div>
+            <div class="fee-item">
+                <span class="fee-chain">Solana</span>
+                <span class="fee-value fee-med">Loading...</span>
+            </div>
+            <div class="fee-item">
+                <span class="fee-chain">Base</span>
+                <span class="fee-value fee-med">Loading...</span>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Features -->
+    <section class="features" id="features">
+        <div class="section-title">
+            <h2>Everything You Need to Transact Smarter</h2>
+            <p>Stop guessing. Start saving.</p>
+        </div>
+        <div class="feature-grid">
+            <div class="feature">
+                <div class="feature-icon">⚡</div>
+                <h3>Real-Time Monitoring</h3>
+                <p>Gas fees updated every 60 seconds across 25+ blockchains. Never miss the optimal transaction window.</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🔔</div>
+                <h3>Smart Alerts</h3>
+                <p>Get notified when gas fees drop below your target. Set custom thresholds for any chain.</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">📊</div>
+                <h3>Historical Data</h3>
+                <p>See fee patterns over time. Identify the cheapest days and hours to transact.</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🔌</div>
+                <h3>Powerful API</h3>
+                <p>REST API with up to 100K requests/day. Integrate gas data directly into your dApp or trading bot.</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">💰</div>
+                <h3>Cost Calculator</h3>
+                <p>Estimate total transaction costs before you send. Compare fees across chains instantly.</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🛡️</div>
+                <h3>Multi-Chain Support</h3>
+                <p>Ethereum, Bitcoin, Polygon, Arbitrum, Optimism, Base, Solana, BNB Chain, and 17 more.</p>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Pricing -->
+    <section class="pricing" id="pricing">
+        <div class="section-title">
+            <h2>Simple, Transparent Pricing</h2>
+            <p>Start free. Scale when you need to.</p>
+        </div>
+        <div class="pricing-grid">
+            <div class="pricing-card">
+                <h3>Free</h3>
+                <div class="price">$0<span>/mo</span></div>
+                <p style="color: var(--text-sec); font-size: 14px;">Perfect for casual crypto users</p>
+                <ul class="pricing-features">
+                    <li>100 API requests/day</li>
+                    <li>5 blockchains</li>
+                    <li>60-second updates</li>
+                    <li>Basic dashboard</li>
+                    <li>Email support</li>
+                </ul>
+                <a href="/dashboard" class="btn btn-secondary" style="width:100%;text-align:center;">Get Started</a>
+            </div>
+            <div class="pricing-card popular">
+                <div class="popular-badge">MOST POPULAR</div>
+                <h3>Hobbyist</h3>
+                <div class="price">$39<span>/mo</span></div>
+                <p style="color: var(--text-sec); font-size: 14px;">For active DeFi traders</p>
+                <ul class="pricing-features">
+                    <li>10,000 API requests/day</li>
+                    <li>All 25+ blockchains</li>
+                    <li>Real-time updates</li>
+                    <li>Full dashboard + alerts</li>
+                    <li>Priority email support</li>
+                    <li>Historical data (30 days)</li>
+                </ul>
+                <a href="https://square.link/u/YjHtGg2s" class="btn btn-primary" style="width:100%;text-align:center;">Start 7-Day Free Trial</a>
+            </div>
+            <div class="prading-card">
+                <h3>Trader</h3>
+                <div class="price">$99<span>/mo</span></div>
+                <p style="color: var(--text-sec); font-size: 14px;">For professionals & teams</p>
+                <ul class="pricing-features">
+                    <li>100,000 API requests/day</li>
+                    <li>All 25+ blockchains</li>
+                    <li>Real-time + WebSocket</li>
+                    <li>Advanced analytics</li>
+                    <li>Dedicated support</li>
+                    <li>Historical data (1 year)</li>
+                    <li>Custom integrations</li>
+                </ul>
+                <a href="https://square.link/u/bW26nrZE" class="btn btn-primary" style="width:100%;text-align:center;">Start 7-Day Free Trial</a>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Testimonials -->
+    <section class="testimonials">
+        <div class="section-title">
+            <h2>Trusted by Crypto Traders</h2>
+        </div>
+        <div class="testimonial-grid">
+            <div class="testimonial">
+                <p>"I used to spend $50+ on Ethereum gas during peak hours. FeeScout helped me time my transactions and I'm saving about $200/month."</p>
+                <div class="testimonial-author">Marcus T.</div>
+                <div class="testimonial-role">DeFi Trader</div>
+            </div>
+            <div class="testimonial">
+                <p>"The API is rock solid. We integrated FeeScout into our trading bot and it's been running flawlessly for 3 months."</p>
+                <div class="testimonial-author">Sarah K.</div>
+                <div class="testimonial-role">Crypto Developer</div>
+            </div>
+            <div class="testimonial">
+                <p>"Best gas tracker I've used. The multi-chain support means I can compare fees across L2s before bridging."</p>
+                <div class="testimonial-author">James R.</div>
+                <div class="testimonial-role">NFT Collector</div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- CTA -->
+    <section class="cta">
+        <h2>Ready to Stop Overpaying?</h2>
+        <p>Join thousands of crypto traders saving money on every transaction.</p>
+        <a href="https://square.link/u/YjHtGg2s" class="btn btn-primary" style="font-size:18px;padding:16px 40px;">Start Your Free Trial →</a>
+        <p style="margin-top:16px;font-size:14px;color:var(--text-muted);">No credit card required. Cancel anytime.</p>
+    </section>
+    
+    <!-- Footer -->
+    <footer>
+        <p>© 2025 FeeScout. All rights reserved.</p>
+        <div>
+            <a href="/privacy.html">Privacy</a>
+            <a href="/terms.html">Terms</a>
+            <a href="mailto:support@feescout.com">Support</a>
+        </div>
+    </footer>
+</div>
+
+<!-- Live Fee Data Script -->
+<script>
+async function fetchFees() {
+    try {
+        const chains = ['ethereum', 'bitcoin', 'polygon', 'arbitrum', 'solana', 'base'];
+        const names = ['Ethereum', 'Bitcoin', 'Polygon', 'Arbitrum', 'Solana', 'Base'];
+        const grid = document.getElementById('fee-grid');
+        
+        for (let i = 0; i < chains.length; i++) {
+            try {
+                const resp = await fetch(`/api/gas-fees/latest?chain=${chains[i]}`);
+                const data = await resp.json();
+                const items = grid.querySelectorAll('.fee-item');
+                if (items[i]) {
+                    const valSpan = items[i].querySelector('.fee-value');
+                    const fee = data?.suggested_fee_per_vbyte || data?.gas_price_gwei || 'N/A';
+                    valSpan.textContent = typeof fee === 'number' ? fee.toFixed(2) : fee;
+                    valSpan.className = 'fee-value ' + (fee < 20 ? 'fee-low' : fee < 50 ? 'fee-med' : 'fee-high');
+                }
+            } catch(e) {}
+        }
+    } catch(e) { console.error('Fee fetch error:', e); }
+}
+
+fetchFees();
+setInterval(fetchFees, 60000);
+</script>
+
+</body>
+</html>
