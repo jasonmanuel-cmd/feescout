@@ -3,8 +3,9 @@ import sqlite3
 import time
 from datetime import datetime
 import json
+import os
 
-API_KEY = 'G___MTJ7PgczS9WHwUrUVqPVA4m4qqXf'
+API_KEY = os.environ.get("BLOCKCHAIR_API_KEY", "")
 
 # All chains supported by Blockchair
 CHAINS = [

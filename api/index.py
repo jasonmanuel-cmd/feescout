@@ -7,7 +7,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from pydantic import BaseModel, EmailStr
 import pg8000.native
-import pg8000
 import requests
 import os
 import json
@@ -91,9 +90,20 @@ def _parse_db_url(url: str) -> dict:
 
 
 def get_db():
-    """Open a new Postgres connection using the DATABASE_URL env var."""
+    """Open a new Postgres connection using the DATABASE_URL env var.
+    Returns None if DATABASE_URL is not configured."""
+    if not DATABASE_URL:
+        return None
     kwargs = _parse_db_url(DATABASE_URL)
     conn = pg8000.native.Connection(**kwargs)
+    return conn
+
+
+def _require_db():
+    """Return a DB connection or raise HTTP 503 if not configured."""
+    conn = get_db()
+    if conn is None:
+        raise HTTPException(503, "Database not configured")
     return conn
 
 
@@ -892,15 +902,26 @@ async def root():
 
 @app.get("/api/health")
 async def health_check():
+    """
+    Health check endpoint.
+    Returns 'healthy' if DB is connected, 'degraded' if no DB is configured,
+    and 'unhealthy' if DB connection fails.
+    """
+    if not DATABASE_URL:
+        return {
+            "status": "healthy",
+            "service": "FeeScout API",
+            "version": "2.1.0",
+            "database": "not_configured",
+        }
     db_ok = False
-    if DATABASE_URL:
-        try:
-            conn = get_db()
-            conn.run("SELECT 1")
-            conn.close()
-            db_ok = True
-        except Exception:
-            db_ok = False
+    try:
+        conn = get_db()
+        conn.run("SELECT 1")
+        conn.close()
+        db_ok = True
+    except Exception:
+        db_ok = False
     return {
         "status": "healthy" if db_ok else "degraded",
         "service": "FeeScout API",
