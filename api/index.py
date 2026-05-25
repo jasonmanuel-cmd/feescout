@@ -39,14 +39,14 @@ SQUARE_TRADER_LINK = os.getenv("SQUARE_TRADER_LINK", "https://square.link/u/bW26
 SQUARE_WEBHOOK_SIGNATURE_KEY = os.getenv("SQUARE_WEBHOOK_SIGNATURE_KEY", "")
 
 # Payment amount → tier mapping (in cents)
-# Hobbyist = $29/mo = 2900 cents, Trader = $99/mo = 9900 cents
+# Hobbyist = $39/mo = 3900 cents, Trader = $99/mo = 9900 cents
 SQUARE_TIER_BY_AMOUNT: dict = {
-    2900: "hobbyist",
+    3900: "hobbyist",
     9900: "trader",
 }
 
 # Master account email — always gets trader tier
-MASTER_EMAILS = {"blunts954@gmail.com"}
+MASTER_EMAILS = {os.getenv("MASTER_EMAIL", "blunts954@gmail.com")}
 
 # Rate limits per tier (requests per day)
 RATE_LIMITS = {
@@ -839,6 +839,28 @@ def _upgrade_user_by_email(email: str, new_tier: str, square_customer_id: Option
     )
     conn.close()
     print(f"[FeeScout] Upgraded {email} → {new_tier}")
+
+    # Send upgrade confirmation email
+    tier_label = new_tier.capitalize()
+    limit = RATE_LIMITS.get(new_tier, 100)
+    upgrade_html = f"""
+<div style="font-family:Inter,sans-serif;max-width:600px;margin:0 auto;padding:40px 20px;">
+  <h1 style="color:#00D68F;">You're now on {tier_label}! 🎉</h1>
+  <p style="color:#333;font-size:16px;line-height:1.6;">
+    Your FeeScout account has been upgraded to the <strong>{tier_label}</strong> plan.
+    You now have <strong>{limit:,} API calls/day</strong> and access to all features.
+  </p>
+  <div style="text-align:center;margin:32px 0;">
+    <a href="https://feescout.com/dashboard" style="background:#00D68F;color:#000;padding:14px 32px;
+       border-radius:8px;text-decoration:none;font-weight:700;font-size:16px;display:inline-block;">
+      Go to Your Dashboard
+    </a>
+  </div>
+  <hr style="border:none;border-top:1px solid #eee;margin:30px 0;">
+  <p style="color:#999;font-size:13px;">FeeScout — Find the cheapest chain, every time.</p>
+</div>
+"""
+    send_email(email, f"You're now on FeeScout {tier_label}!", upgrade_html)
     return True
 
 
