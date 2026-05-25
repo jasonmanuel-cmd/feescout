@@ -1,5 +1,14 @@
 {
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/api/index.py" }
+  "builds": [
+    { "src": "api/index.py", "use": "@vercel/python" },
+    { "src": "*.html", "use": "@vercel/static" },
+    { "src": "*.png", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "api/index.py" },
+    { "src": "/", "dest": "index.html" },
+    { "src": "/dashboard", "dest": "dashboard.html" },
+    { "src": "/privacy-policy", "dest": "privacy-policy.html" },
+    { "src": "/feescoutlogo.png", "dest": "feescoutlogo.png" }
   ]
 }

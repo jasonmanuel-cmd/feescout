@@ -15,13 +15,19 @@ import hashlib
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import hmac as hmac_lib
 
 app = FastAPI(title="FeeScout API", version="2.1.0")
 
+ALLOWED_ORIGINS = [
+    orig.strip()
+    for orig in os.getenv("ALLOWED_ORIGINS", "https://feescout.com,https://www.feescout.com,https://feescout.vercel.app").split(",")
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -391,7 +397,7 @@ async def signup(req: SignupRequest, response: Response, request: Request):
     now = datetime.now(timezone.utc).isoformat()
     initial_tier = "trader" if req.email in MASTER_EMAILS else "free"
 
-    conn = get_db()
+    conn = _require_db()
     try:
         conn.run(
             "INSERT INTO users (email, password_hash, api_key, tier, created_at, updated_at) VALUES (:email, :pw, :key, :tier, :now, :now2)",
@@ -423,7 +429,7 @@ async def signup(req: SignupRequest, response: Response, request: Request):
 
 @app.post("/api/auth/login")
 async def login(req: LoginRequest, response: Response, request: Request):
-    conn = get_db()
+    conn = _require_db()
     rows = conn.run("SELECT * FROM users WHERE email = :email", email=req.email.lower())
     cols = [c["name"] for c in conn.columns]
     conn.close()
@@ -597,12 +603,18 @@ def get_cached_fees():
             return _fee_cache["data"]
 
     fees = []
-    for chain in CHAINS:
-        stats = _fetch_chain_stats(chain)
-        if stats:
-            fee_data = _parse_fee_data(chain, stats)
-            if fee_data and fee_data["fee_usd"]:
-                fees.append(fee_data)
+    with ThreadPoolExecutor(max_workers=10) as pool:
+        fut_to_chain = {pool.submit(_fetch_chain_stats, c): c for c in CHAINS}
+        for future in as_completed(fut_to_chain):
+            chain = fut_to_chain[future]
+            try:
+                stats = future.result()
+            except Exception:
+                stats = None
+            if stats:
+                fee_data = _parse_fee_data(chain, stats)
+                if fee_data and fee_data["fee_usd"]:
+                    fees.append(fee_data)
 
     fees.sort(key=lambda x: x["fee_usd"])
     _fee_cache["data"] = fees
