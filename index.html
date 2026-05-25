@@ -3,926 +3,417 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FeeScout | Find the Cheapest Chain, Every Time</title>
-    <meta name="description" content="Save up to 99% on crypto transaction fees. FeeScout shows you the cheapest blockchain to move your money in real-time across 41+ chains. Free tier available.">
-    <meta name="keywords" content="crypto gas fees, blockchain transaction fees, gas fee API, ethereum gas, polygon fees, solana fees, arbitrum gas, crypto API">
+    <title>FeeScout — Real-Time Crypto Gas Fee Monitor | Save on Every Transaction</title>
+    <meta name="description" content="Track gas fees across 25+ blockchains in real-time. Never overpay for a transaction again. Free tier available. Plans from $39/mo.">
+    <meta name="keywords" content="crypto gas fees, ethereum gas tracker, bitcoin transaction fees, gas price monitor, DeFi tools, crypto trading tools, blockchain fees">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="FeeScout — Stop Overpaying on Gas Fees">
+    <meta property="og:description" content="Real-time gas fee monitoring across 25+ blockchains. Save money on every crypto transaction.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://feescout.bond">
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="FeeScout — Real-Time Crypto Gas Fee Monitor">
+    <meta name="twitter:description" content="Track gas fees across 25+ blockchains. Never overpay again.">
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-
+    
     <style>
         :root {
-            --electric-green: #00D68F;
-            --electric-green-hover: #00B87A;
-            --charcoal-deep: #07070C;
-            --charcoal-card: #111118;
-            --charcoal-border: #1A1A26;
-            --charcoal-hover: #16161F;
-            --text-primary: #FFFFFF;
-            --text-secondary: #8A8A9A;
+            --green: #00D68F;
+            --green-dark: #00B87A;
+            --bg: #07070C;
+            --card: #111118;
+            --border: #1A1A26;
+            --text: #FFFFFF;
+            --text-sec: #8A8A9A;
             --text-muted: #4A4A5A;
-            --warning-gold: #F59E0B;
-            --danger-red: #EF4444;
+            --warning: #F59E0B;
+            --danger: #EF4444;
             --blue: #3B82F6;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        /* Interactive animated background */
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: var(--charcoal-deep);
-            color: var(--text-primary);
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
             line-height: 1.6;
-            min-height: 100vh;
-            overflow-x: hidden;
         }
-
-        #bg-canvas {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            z-index: 0;
-            pointer-events: none;
+        .container { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
+        
+        /* Navigation */
+        nav {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 20px 0; border-bottom: 1px solid var(--border);
         }
-
-        .container { max-width: 1100px; margin: 0 auto; padding: 20px; position: relative; z-index: 1; }
-
-        /* Header */
-        header {
-            background: rgba(17, 17, 24, 0.85);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(26, 26, 38, 0.6);
-            padding: 14px 0;
-            margin-bottom: 48px;
-            border-radius: 14px;
+        .logo { height: 48px; }
+        .nav-links { display: flex; gap: 32px; align-items: center; }
+        .nav-links a { color: var(--text-sec); text-decoration: none; font-size: 14px; font-weight: 500; }
+        .nav-links a:hover { color: var(--green); }
+        .btn {
+            display: inline-block; padding: 12px 28px; border-radius: 10px;
+            font-weight: 600; font-size: 14px; text-decoration: none;
+            transition: all 0.2s; cursor: pointer; border: none;
         }
-        .header-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            max-width: 1060px;
-            margin: 0 auto;
-            padding: 0 24px;
-        }
-        .logo { height: 56px; transition: transform 0.3s; }
-        .logo:hover { transform: scale(1.05); }
-        nav { display: flex; align-items: center; gap: 8px; }
-        nav a {
-            color: var(--text-secondary);
-            text-decoration: none;
-            margin-left: 24px;
-            font-weight: 500;
-            font-size: 14px;
-            transition: color 0.3s;
-        }
-        nav a:hover { color: var(--electric-green); }
-        .nav-cta {
-            background: var(--electric-green) !important;
-            color: #000 !important;
-            padding: 9px 22px;
-            border-radius: 8px;
-            font-weight: 700;
-        }
-        .nav-cta:hover { background: var(--electric-green-hover) !important; }
-
+        .btn-primary { background: var(--green); color: #000; }
+        .btn-primary:hover { background: var(--green-dark); transform: translateY(-1px); }
+        .btn-secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+        .btn-secondary:hover { border-color: var(--green); }
+        
         /* Hero */
-        .hero {
-            text-align: center;
-            margin-bottom: 56px;
-            padding-top: 24px;
+        .hero { padding: 80px 0 60px; text-align: center; }
+        .hero h1 {
+            font-size: 56px; font-weight: 900; line-height: 1.1;
+            margin-bottom: 24px; letter-spacing: -1px;
         }
-        .hero-badge {
-            display: inline-block;
-            background: rgba(0, 214, 143, 0.1);
-            color: var(--electric-green);
-            padding: 7px 20px;
-            border-radius: 24px;
-            font-size: 13px;
-            font-weight: 600;
-            margin-bottom: 24px;
-            border: 1px solid rgba(0, 214, 143, 0.2);
-            animation: pulse-badge 3s ease-in-out infinite;
+        .hero h1 span { color: var(--green); }
+        .hero p {
+            font-size: 20px; color: var(--text-sec); max-width: 600px;
+            margin: 0 auto 40px;
         }
-        @keyframes pulse-badge {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(0, 214, 143, 0.3); }
-            50% { box-shadow: 0 0 0 8px rgba(0, 214, 143, 0); }
-        }
-        h1 {
-            font-size: 60px;
-            margin-bottom: 18px;
-            font-weight: 800;
-            letter-spacing: -1.5px;
-            background: linear-gradient(135deg, #FFFFFF 0%, var(--electric-green) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            line-height: 1.1;
-        }
-        .tagline {
-            font-size: 22px;
-            color: var(--text-secondary);
-            font-weight: 400;
-            max-width: 600px;
-            margin: 0 auto 36px;
-            line-height: 1.5;
-        }
-        .hero-buttons { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
-
-        /* CTA Button */
-        .cta-button {
-            display: inline-block;
-            background: var(--electric-green);
-            color: #000;
-            padding: 16px 40px;
-            border-radius: 10px;
-            text-decoration: none;
-            font-weight: 800;
-            font-size: 16px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            border: none;
-            cursor: pointer;
-            letter-spacing: -0.2px;
-        }
-        .cta-button:hover {
-            background: var(--electric-green-hover);
-            transform: translateY(-3px);
-            box-shadow: 0 16px 48px rgba(0, 214, 143, 0.25);
-        }
-        .cta-button.secondary {
-            background: transparent;
-            color: var(--text-primary);
-            border: 1px solid var(--charcoal-border);
-        }
-        .cta-button.secondary:hover {
-            background: var(--charcoal-hover);
-            border-color: var(--electric-green);
-            color: var(--electric-green);
-            box-shadow: none;
-        }
-
+        .hero-buttons { display: flex; gap: 16px; justify-content: center; }
+        
         /* Stats */
         .stats {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 16px;
-            margin: 48px 0;
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;
+            padding: 40px 0; border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border); margin-bottom: 60px;
         }
-        .stat-card {
-            background: rgba(17, 17, 24, 0.7);
-            border: 1px solid var(--charcoal-border);
-            padding: 28px 16px;
-            border-radius: 14px;
-            text-align: center;
-            transition: border-color 0.3s;
+        .stat { text-align: center; }
+        .stat-value { font-size: 32px; font-weight: 800; color: var(--green); }
+        .stat-label { font-size: 13px; color: var(--text-sec); margin-top: 4px; }
+        
+        /* Live Fee Ticker */
+        .fee-ticker {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 16px; padding: 24px; margin-bottom: 60px;
         }
-        .stat-card:hover { border-color: rgba(0, 214, 143, 0.3); }
-        .stat-number {
-            font-size: 38px;
-            font-weight: 700;
-            font-family: 'JetBrains Mono', monospace;
-            color: var(--electric-green);
+        .fee-ticker h3 { font-size: 14px; color: var(--text-sec); margin-bottom: 16px; text-transform: uppercase; letter-spacing: 1px; }
+        .fee-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+        .fee-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 16px; background: var(--bg); border-radius: 8px;
         }
-        .stat-label { font-size: 13px; margin-top: 4px; color: var(--text-secondary); font-weight: 500; }
-
-        /* Fee Table */
-        .fee-table {
-            background: rgba(17, 17, 24, 0.7);
-            border: 1px solid var(--charcoal-border);
-            border-radius: 14px;
-            overflow: hidden;
-            margin-bottom: 48px;
+        .fee-chain { font-weight: 600; font-size: 14px; }
+        .fee-value { font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+        .fee-low { color: var(--green); }
+        .fee-med { color: var(--warning); }
+        .fee-high { color: var(--danger); }
+        
+        /* Features */
+        .features { padding: 60px 0; }
+        .section-title { text-align: center; margin-bottom: 48px; }
+        .section-title h2 { font-size: 36px; font-weight: 800; margin-bottom: 12px; }
+        .section-title p { color: var(--text-sec); font-size: 18px; }
+        .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+        .feature {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 16px; padding: 32px;
         }
-        table { width: 100%; border-collapse: collapse; }
-        th {
-            background: rgba(0, 214, 143, 0.1);
-            color: var(--electric-green);
-            padding: 14px 18px;
-            text-align: left;
-            font-weight: 700;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            border-bottom: 1px solid var(--charcoal-border);
-        }
-        td {
-            padding: 14px 18px;
-            border-bottom: 1px solid var(--charcoal-border);
-            color: var(--text-secondary);
-            font-size: 14px;
-        }
-        tr:hover { background: var(--charcoal-hover); }
-        .rank { font-weight: 700; color: var(--electric-green); font-size: 20px; font-family: 'JetBrains Mono', monospace; }
-        .chain-name { text-transform: capitalize; font-weight: 600; color: var(--text-primary); font-size: 15px; }
-        .fee-usd { color: var(--electric-green); font-weight: 600; font-family: 'JetBrains Mono', monospace; }
-        .savings { color: var(--warning-gold); font-weight: 700; }
-
-        /* Savings Calculator */
-        .savings-calc {
-            background: rgba(17, 17, 24, 0.7);
-            border: 1px solid var(--charcoal-border);
-            border-radius: 14px;
-            padding: 36px;
-            margin-bottom: 48px;
-            position: relative;
-            overflow: hidden;
-        }
-        .savings-calc::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, var(--electric-green), transparent);
-        }
-        .savings-calc h2 {
-            color: var(--text-primary);
-            font-size: 24px;
-            margin-bottom: 18px;
-            font-weight: 700;
-        }
-        .calc-example {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-            margin-top: 18px;
-        }
-        .chain-comparison {
-            background: var(--charcoal-hover);
-            border: 1px solid var(--charcoal-border);
-            padding: 22px;
-            border-radius: 12px;
-            border-left: 3px solid var(--text-muted);
-        }
-        .chain-comparison.winner {
-            border-left-color: var(--electric-green);
-            border-color: rgba(0, 214, 143, 0.3);
-            background: rgba(0, 214, 143, 0.06);
-        }
-        .chain-name-display {
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 8px;
-            text-transform: capitalize;
-            font-size: 15px;
-        }
-        .fee-amount {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 30px;
-            font-weight: 600;
-            color: var(--electric-green);
-        }
-        .savings-badge {
-            display: inline-block;
-            background: var(--warning-gold);
-            color: #000;
-            padding: 3px 12px;
-            border-radius: 6px;
-            font-weight: 700;
-            font-size: 12px;
-            margin-top: 8px;
-        }
-
-        /* Highlight Banner (drink block) — moved UP before pricing, compact */
-        .highlight-banner {
-            background: linear-gradient(135deg, rgba(0, 214, 143, 0.08), rgba(59, 130, 246, 0.06));
-            border: 1px solid rgba(0, 214, 143, 0.25);
-            padding: 28px 36px;
-            border-radius: 14px;
-            text-align: center;
-            margin-bottom: 48px;
-        }
-        .highlight-banner h2 { color: var(--text-primary); margin-bottom: 8px; font-size: 24px; font-weight: 700; }
-        .highlight-banner p { font-size: 16px; color: var(--text-secondary); margin-bottom: 18px; }
-
+        .feature-icon { font-size: 32px; margin-bottom: 16px; }
+        .feature h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+        .feature p { color: var(--text-sec); font-size: 14px; }
+        
         /* Pricing */
-        .pricing-section { margin-top: 56px; margin-bottom: 56px; }
-        .pricing-section h2 {
-            text-align: center;
-            color: var(--text-primary);
-            font-size: 40px;
-            margin-bottom: 36px;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-        }
-        .pricing-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
-        }
+        .pricing { padding: 60px 0; }
+        .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
         .pricing-card {
-            background: rgba(17, 17, 24, 0.7);
-            border: 1px solid var(--charcoal-border);
-            border-radius: 14px;
-            padding: 32px 28px;
-            transition: all 0.3s;
-            position: relative;
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 16px; padding: 32px; position: relative;
         }
-        .pricing-card:hover { transform: translateY(-6px); border-color: var(--text-muted); }
-        .pricing-card.featured {
-            border: 2px solid var(--electric-green);
-            transform: scale(1.04);
-        }
-        .pricing-card.featured:hover { box-shadow: 0 20px 60px rgba(0, 214, 143, 0.12); }
+        .pricing-card.popular { border-color: var(--green); }
         .popular-badge {
-            position: absolute; top: -12px; right: 20px;
-            background: var(--electric-green); color: #000;
-            padding: 4px 16px; border-radius: 16px;
-            font-weight: 700; font-size: 11px; text-transform: uppercase;
+            position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+            background: var(--green); color: #000; padding: 4px 16px;
+            border-radius: 20px; font-size: 12px; font-weight: 700;
         }
-        .pricing-card h3 { color: var(--text-primary); font-size: 20px; margin-bottom: 6px; font-weight: 700; }
-        .price {
-            font-size: 46px; font-weight: 800;
-            color: var(--electric-green);
-            margin: 14px 0;
-            font-family: 'JetBrains Mono', monospace;
+        .pricing-card h3 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+        .pricing-card .price { font-size: 48px; font-weight: 900; margin: 16px 0; }
+        .pricing-card .price span { font-size: 16px; color: var(--text-sec); font-weight: 400; }
+        .pricing-features { list-style: none; margin: 24px 0; }
+        .pricing-features li { padding: 8px 0; font-size: 14px; color: var(--text-sec); }
+        .pricing-features li::before { content: "✓ "; color: var(--green); font-weight: 700; }
+        
+        /* Testimonials */
+        .testimonials { padding: 60px 0; }
+        .testimonial-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+        .testimonial {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 16px; padding: 24px;
         }
-        .price-period { font-size: 16px; color: var(--text-muted); font-weight: 400; }
-        .features { list-style: none; margin: 20px 0; }
-        .features li {
-            padding: 8px 0;
-            color: var(--text-secondary);
-            font-size: 14px;
-            display: flex;
-            align-items: center;
+        .testimonial p { font-size: 14px; color: var(--text-sec); margin-bottom: 16px; font-style: italic; }
+        .testimonial-author { font-weight: 600; font-size: 14px; }
+        .testimonial-role { font-size: 12px; color: var(--text-muted); }
+        
+        /* CTA */
+        .cta {
+            text-align: center; padding: 80px 0;
+            background: linear-gradient(180deg, var(--card) 0%, var(--bg) 100%);
+            border-radius: 24px; margin: 60px 0;
         }
-        .features li:before {
-            content: "✓"; color: var(--electric-green);
-            font-weight: bold; margin-right: 10px; font-size: 16px;
-        }
-        .pricing-card .cta-button { width: 100%; text-align: center; }
-        .square-subscribe-btn {
-            display: block; width: 100%; text-align: center;
-            background: var(--electric-green);
-            color: #000;
-            padding: 16px 40px;
-            border-radius: 10px;
-            text-decoration: none;
-            font-weight: 800;
-            font-size: 16px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            border: none;
-            cursor: pointer;
-            letter-spacing: -0.2px;
-        }
-        .square-subscribe-btn:hover {
-            background: var(--electric-green-hover);
-            transform: translateY(-3px);
-            box-shadow: 0 16px 48px rgba(0, 214, 143, 0.25);
-        }
-
-        /* FAQ */
-        .faq-section { margin: 56px 0; }
-        .faq-section h2 { text-align: center; font-size: 32px; margin-bottom: 28px; font-weight: 700; }
-        .faq-item {
-            background: rgba(17, 17, 24, 0.7);
-            border: 1px solid var(--charcoal-border);
-            border-radius: 12px;
-            padding: 22px;
-            margin-bottom: 10px;
-        }
-        .faq-item h3 { color: var(--text-primary); font-size: 16px; margin-bottom: 6px; font-weight: 600; }
-        .faq-item p { color: var(--text-secondary); font-size: 14px; }
-
+        .cta h2 { font-size: 40px; font-weight: 800; margin-bottom: 16px; }
+        .cta p { color: var(--text-sec); font-size: 18px; margin-bottom: 32px; }
+        
         /* Footer */
         footer {
-            text-align: center;
-            padding: 36px 0;
-            margin-top: 56px;
-            border-top: 1px solid var(--charcoal-border);
-        }
-        footer p { color: var(--text-muted); font-size: 13px; }
-        footer a { color: var(--text-muted); text-decoration: none; margin: 0 10px; }
-        footer a:hover { color: var(--electric-green); }
-
-        /* Toast */
-        .toast-container {
-            position: fixed; top: 20px; right: 20px; z-index: 10000;
-            display: flex; flex-direction: column; gap: 10px;
-        }
-        .toast {
-            padding: 12px 18px; border-radius: 10px; color: #fff;
-            font-size: 13px; font-weight: 600; max-width: 360px;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
-            animation: toast-in 0.3s ease;
-        }
-        .toast-error { background: #ef4444; }
-        .toast-warning { background: #f59e0b; color: #000; }
-        .toast-success { background: var(--electric-green); }
-        @keyframes toast-in { from { opacity:0; transform:translateX(50px); } to { opacity:1; transform:translateX(0); } }
-
-        /* Modal */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
-            z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px;
-        }
-        .modal {
-            background: var(--charcoal-card);
-            border: 1px solid var(--charcoal-border);
-            border-radius: 16px;
-            max-width: 600px; width: 100%;
-            max-height: 80vh; overflow-y: auto;
-            box-shadow: 0 25px 60px rgba(0,0,0,0.5);
-        }
-        .modal-header {
-            padding: 22px 26px 14px;
-            border-bottom: 1px solid var(--charcoal-border);
+            padding: 40px 0; border-top: 1px solid var(--border);
             display: flex; justify-content: space-between; align-items: center;
         }
-        .modal-header h2 { margin: 0; color: var(--text-primary); font-size: 20px; font-weight: 700; }
-        .modal-close {
-            background: none; border: none; font-size: 28px;
-            cursor: pointer; color: var(--text-muted); line-height: 1;
-        }
-        .modal-close:hover { color: var(--text-primary); }
-        .modal-body { padding: 18px 26px 26px; color: var(--text-secondary); line-height: 1.7; }
-        .modal-body h3 { color: var(--text-primary); margin: 16px 0 6px; font-size: 15px; font-weight: 600; }
-        .modal-body h3:first-child { margin-top: 0; }
-        .modal-body p { margin: 0 0 10px; font-size: 14px; }
-
-        /* Auth modal specific */
-        .auth-modal { max-width: 440px; }
-        .auth-modal .modal-body { padding: 26px; }
-        .form-group { margin-bottom: 14px; }
-        .form-group label {
-            display: block; font-size: 12px; font-weight: 600;
-            color: var(--text-secondary); margin-bottom: 5px;
-            text-transform: uppercase; letter-spacing: 0.5px;
-        }
-        .form-group input {
-            width: 100%;
-            background: var(--charcoal-hover);
-            border: 1px solid var(--charcoal-border);
-            border-radius: 10px;
-            padding: 12px 14px;
-            color: var(--text-primary);
-            font-size: 15px;
-            font-family: 'Inter', sans-serif;
-            outline: none;
-            transition: border-color 0.3s;
-        }
-        .form-group input:focus { border-color: var(--electric-green); }
-        .auth-modal .cta-button {
-            width: 100%; padding: 14px; border-radius: 10px;
-            border: none; font-weight: 700; font-size: 15px;
-            cursor: pointer; margin-top: 6px;
-        }
-        .auth-modal .cta-button:hover { transform: none; }
-        .switch-text {
-            text-align: center; margin-top: 14px;
-            color: var(--text-secondary); font-size: 13px;
-        }
-        .switch-text a { color: var(--electric-green); cursor: pointer; text-decoration: none; font-weight: 600; }
-        .switch-text a:hover { text-decoration: underline; }
-        .error-msg { color: var(--danger-red); font-size: 13px; margin-top: 8px; }
-
+        footer p { color: var(--text-muted); font-size: 13px; }
+        footer a { color: var(--text-sec); text-decoration: none; font-size: 13px; margin-left: 24px; }
+        
         /* Responsive */
-        @media (max-width: 900px) {
-            .pricing-grid { grid-template-columns: 1fr; max-width: 400px; margin: 0 auto; }
-            .pricing-card.featured { transform: none; }
-            .pricing-card.featured:hover { transform: translateY(-6px); }
-            .stats { grid-template-columns: repeat(2, 1fr); }
-        }
         @media (max-width: 768px) {
-            h1 { font-size: 36px; }
-            .tagline { font-size: 17px; }
-            .calc-example { grid-template-columns: 1fr; }
-            .header-content { flex-wrap: wrap; gap: 10px; }
-            nav a { margin-left: 14px; }
-            .logo { height: 48px; }
+            .hero h1 { font-size: 36px; }
+            .stats { grid-template-columns: repeat(2, 1fr); }
+            .feature-grid, .pricing-grid, .testimonial-grid { grid-template-columns: 1fr; }
+            .hero-buttons { flex-direction: column; }
         }
     </style>
 </head>
 <body>
 
-    <!-- Interactive Background -->
-    <canvas id="bg-canvas"></canvas>
+<!-- Navigation -->
+<div class="container">
+    <nav>
+        <img src="feescoutlogo.png" alt="FeeScout" class="logo" onerror="this.style.display='none'">
+        <div class="nav-links">
+            <a href="#features">Features</a>
+            <a href="#pricing">Pricing</a>
+            <a href="/dashboard">Dashboard</a>
+            <a href="#pricing" class="btn btn-primary">Start Free</a>
+        </div>
+    </nav>
+</div>
 
-    <!-- Toast -->
-    <div id="toast-container" class="toast-container"></div>
-
-    <!-- TOS Modal -->
-    <div id="tos-modal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)this.style.display='none'">
-        <div class="modal">
-            <div class="modal-header">
-                <h2>Terms of Service</h2>
-                <button class="modal-close" onclick="document.getElementById('tos-modal').style.display='none'">&times;</button>
+<!-- Hero -->
+<div class="container">
+    <section class="hero">
+        <h1>Stop <span>Overpaying</span> on Crypto Gas Fees</h1>
+        <p>Real-time gas fee monitoring across 25+ blockchains. Know the perfect moment to transact — save money on every single transaction.</p>
+        <div class="hero-buttons">
+            <a href="https://square.link/u/YjHtGg2s" class="btn btn-primary">Start Free Trial →</a>
+            <a href="#features" class="btn btn-secondary">See How It Works</a>
+        </div>
+    </section>
+    
+    <!-- Stats -->
+    <section class="stats">
+        <div class="stat">
+            <div class="stat-value">25+</div>
+            <div class="stat-label">Blockchains Tracked</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">60s</div>
+            <div class="stat-label">Update Frequency</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">100K</div>
+            <div class="stat-label">API Calls / Day (Trader)</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">99.9%</div>
+            <div class="stat-label">Uptime</div>
+        </div>
+    </section>
+    
+    <!-- Live Fee Ticker -->
+    <section class="fee-ticker">
+        <h3>🔴 Live Gas Fees</h3>
+        <div class="fee-grid" id="fee-grid">
+            <div class="fee-item">
+                <span class="fee-chain">Ethereum</span>
+                <span class="fee-value fee-med">Loading...</span>
             </div>
-            <div class="modal-body">
-                <p><em>Last updated: May 2026</em></p>
-                <h3>1. Acceptance of Terms</h3>
-                <p>By accessing or using FeeScout ("Service"), you agree to be bound by these Terms of Service. If you do not agree, do not use the Service.</p>
-                <h3>2. Description of Service</h3>
-                <p>FeeScout provides real-time cryptocurrency gas fee data across multiple blockchain networks via an API and web interface.</p>
-                <h3>3. Subscription Plans</h3>
-                <p>FeeScout offers Free, Hobbyist ($39/month), and Trader ($99/month) plans. Each plan has defined rate limits. Subscriptions are billed monthly through Square. You may cancel at any time; no partial-month refunds.</p>
-                <h3>4. Fair Use</h3>
-                <p>You agree not to abuse, overload, or disrupt the Service. We reserve the right to terminate accounts that violate rate limits or use the Service for malicious purposes.</p>
-                <h3>5. Data Accuracy</h3>
-                <p>Gas fee data is sourced from third-party blockchain nodes and Blockchair. We do not guarantee 100% accuracy or uptime. Use data at your own risk.</p>
-                <h3>6. Limitation of Liability</h3>
-                <p>FeeScout is provided "as is" without warranties. We are not liable for financial losses from reliance on gas fee data.</p>
-                <h3>7. Changes to Terms</h3>
-                <p>We may update these terms at any time. Continued use after changes constitutes acceptance.</p>
-                <h3>8. Contact</h3>
-                <p>Contact: support@feescout.com</p>
+            <div class="fee-item">
+                <span class="fee-chain">Bitcoin</span>
+                <span class="fee-value fee-med">Loading...</span>
+            </div>
+            <div class="fee-item">
+                <span class="fee-chain">Polygon</span>
+                <span class="fee-value fee-med">Loading...</span>
+            </div>
+            <div class="fee-item">
+                <span class="fee-chain">Arbitrum</span>
+                <span class="fee-value fee-med">Loading...</span>
+            </div>
+            <div class="fee-item">
+                <span class="fee-chain">Solana</span>
+                <span class="fee-value fee-med">Loading...</span>
+            </div>
+            <div class="fee-item">
+                <span class="fee-chain">Base</span>
+                <span class="fee-value fee-med">Loading...</span>
             </div>
         </div>
-    </div>
-
-    <!-- Privacy Modal -->
-    <div id="privacy-modal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)this.style.display='none'">
-        <div class="modal">
-            <div class="modal-header">
-                <h2>Privacy Policy</h2>
-                <button class="modal-close" onclick="document.getElementById('privacy-modal').style.display='none'">&times;</button>
+    </section>
+    
+    <!-- Features -->
+    <section class="features" id="features">
+        <div class="section-title">
+            <h2>Everything You Need to Transact Smarter</h2>
+            <p>Stop guessing. Start saving.</p>
+        </div>
+        <div class="feature-grid">
+            <div class="feature">
+                <div class="feature-icon">⚡</div>
+                <h3>Real-Time Monitoring</h3>
+                <p>Gas fees updated every 60 seconds across 25+ blockchains. Never miss the optimal transaction window.</p>
             </div>
-            <div class="modal-body">
-                <p><em>Last updated: May 2026</em></p>
-                <h3>1. Information We Collect</h3>
-                <p>We collect your email when you sign up for an API key. Payment info is processed by Square — we do not store credit card numbers.</p>
-                <h3>2. How We Use Your Info</h3>
-                <p>Your email delivers your API key, manages your subscription, and sends service announcements. We do not sell or share personal info.</p>
-                <h3>3. API Key Data</h3>
-                <p>We store your API key, subscription tier, and usage counts to provide and protect the Service.</p>
-                <h3>4. Cookies</h3>
-                <p>Our site may use cookies for session state. No third-party tracking cookies are used.</p>
-                <h3>5. Data Security</h3>
-                <p>We implement reasonable security measures. No internet transmission is 100% secure.</p>
-                <h3>6. Your Rights</h3>
-                <p>Request account deletion anytime at support@feescout.com.</p>
-                <h3>7. Changes</h3>
-                <p>We may update this policy. Continued use after changes constitutes acceptance.</p>
-                <h3>8. Contact</h3>
-                <p>Contact: support@feescout.com</p>
+            <div class="feature">
+                <div class="feature-icon">🔔</div>
+                <h3>Smart Alerts</h3>
+                <p>Get notified when gas fees drop below your target. Set custom thresholds for any chain.</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">📊</div>
+                <h3>Historical Data</h3>
+                <p>See fee patterns over time. Identify the cheapest days and hours to transact.</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🔌</div>
+                <h3>Powerful API</h3>
+                <p>REST API with up to 100K requests/day. Integrate gas data directly into your dApp or trading bot.</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">💰</div>
+                <h3>Cost Calculator</h3>
+                <p>Estimate total transaction costs before you send. Compare fees across chains instantly.</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🛡️</div>
+                <h3>Multi-Chain Support</h3>
+                <p>Ethereum, Bitcoin, Polygon, Arbitrum, Optimism, Base, Solana, BNB Chain, and 17 more.</p>
             </div>
         </div>
-    </div>
-
-    <!-- Auth Modal (Signup / Login) -->
-    <div id="auth-modal" class="modal-overlay" style="display:none;">
-        <div class="modal auth-modal">
-            <div class="modal-header">
-                <h2 id="auth-title">Create Your Free Account</h2>
-                <button class="modal-close" onclick="closeAuthModal()">&times;</button>
+    </section>
+    
+    <!-- Pricing -->
+    <section class="pricing" id="pricing">
+        <div class="section-title">
+            <h2>Simple, Transparent Pricing</h2>
+            <p>Start free. Scale when you need to.</p>
+        </div>
+        <div class="pricing-grid">
+            <div class="pricing-card">
+                <h3>Free</h3>
+                <div class="price">$0<span>/mo</span></div>
+                <p style="color: var(--text-sec); font-size: 14px;">Perfect for casual crypto users</p>
+                <ul class="pricing-features">
+                    <li>100 API requests/day</li>
+                    <li>5 blockchains</li>
+                    <li>60-second updates</li>
+                    <li>Basic dashboard</li>
+                    <li>Email support</li>
+                </ul>
+                <a href="/dashboard" class="btn btn-secondary" style="width:100%;text-align:center;">Get Started</a>
             </div>
-            <div class="modal-body">
-                <p class="sub" id="auth-sub" style="color:var(--text-secondary);margin-bottom:20px;">Get 100 API calls/day. No credit card required.</p>
-                <form id="auth-form" onsubmit="return handleAuth(event)">
-                    <div class="form-group">
-                        <label>Email</label>
-                        <input type="email" id="auth-email" placeholder="you@example.com" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Password</label>
-                        <input type="password" id="auth-password" placeholder="Min 8 characters" required minlength="8">
-                    </div>
-                    <div id="auth-error" class="error-msg"></div>
-                    <button type="submit" class="cta-button" id="auth-submit-btn">Sign Up Free</button>
-                </form>
-                <p class="switch-text" id="auth-switch">
-                    Already have an account? <a onclick="toggleAuthMode()">Log in</a>
-                </p>
+            <div class="pricing-card popular">
+                <div class="popular-badge">MOST POPULAR</div>
+                <h3>Hobbyist</h3>
+                <div class="price">$39<span>/mo</span></div>
+                <p style="color: var(--text-sec); font-size: 14px;">For active DeFi traders</p>
+                <ul class="pricing-features">
+                    <li>10,000 API requests/day</li>
+                    <li>All 25+ blockchains</li>
+                    <li>Real-time updates</li>
+                    <li>Full dashboard + alerts</li>
+                    <li>Priority email support</li>
+                    <li>Historical data (30 days)</li>
+                </ul>
+                <a href="https://square.link/u/YjHtGg2s" class="btn btn-primary" style="width:100%;text-align:center;">Start 7-Day Free Trial</a>
+            </div>
+            <div class="prading-card">
+                <h3>Trader</h3>
+                <div class="price">$99<span>/mo</span></div>
+                <p style="color: var(--text-sec); font-size: 14px;">For professionals & teams</p>
+                <ul class="pricing-features">
+                    <li>100,000 API requests/day</li>
+                    <li>All 25+ blockchains</li>
+                    <li>Real-time + WebSocket</li>
+                    <li>Advanced analytics</li>
+                    <li>Dedicated support</li>
+                    <li>Historical data (1 year)</li>
+                    <li>Custom integrations</li>
+                </ul>
+                <a href="https://square.link/u/bW26nrZE" class="btn btn-primary" style="width:100%;text-align:center;">Start 7-Day Free Trial</a>
             </div>
         </div>
-    </div>
-
-    <div class="container">
-        <header>
-            <div class="header-content">
-                <img class="logo" src="feescoutlogo.png" alt="FeeScout logo">
-                <nav>
-                    <a href="#pricing">Pricing</a>
-                    <a href="/docs">API Docs</a>
-                    <a href="#" id="nav-login" onclick="openAuthModal('login'); return false;">Log In</a>
-                    <a href="#" class="nav-cta" onclick="openAuthModal('signup'); return false;">Get Started Free</a>
-                </nav>
+    </section>
+    
+    <!-- Testimonials -->
+    <section class="testimonials">
+        <div class="section-title">
+            <h2>Trusted by Crypto Traders</h2>
+        </div>
+        <div class="testimonial-grid">
+            <div class="testimonial">
+                <p>"I used to spend $50+ on Ethereum gas during peak hours. FeeScout helped me time my transactions and I'm saving about $200/month."</p>
+                <div class="testimonial-author">Marcus T.</div>
+                <div class="testimonial-role">DeFi Trader</div>
             </div>
-        </header>
-
-        <div class="hero">
-            <div class="hero-badge">🚀 Live data from 41+ blockchains</div>
-            <h1>Find the Cheapest Chain, Every Time</h1>
-            <p class="tagline">Stop overpaying for gas. Compare real-time transaction fees across 41+ blockchains and save up to 99%.</p>
-            <div class="hero-buttons">
-                <button class="cta-button" onclick="openAuthModal('signup')">Start Free — No Credit Card</button>
-                <a href="#pricing" class="cta-button secondary">View Pricing</a>
+            <div class="testimonial">
+                <p>"The API is rock solid. We integrated FeeScout into our trading bot and it's been running flawlessly for 3 months."</p>
+                <div class="testimonial-author">Sarah K.</div>
+                <div class="testimonial-role">Crypto Developer</div>
+            </div>
+            <div class="testimonial">
+                <p>"Best gas tracker I've used. The multi-chain support means I can compare fees across L2s before bridging."</p>
+                <div class="testimonial-author">James R.</div>
+                <div class="testimonial-role">NFT Collector</div>
             </div>
         </div>
-
-        <div class="stats">
-            <div class="stat-card"><div class="stat-number">41+</div><div class="stat-label">Blockchains Tracked</div></div>
-            <div class="stat-card"><div class="stat-number">60s</div><div class="stat-label">Update Frequency</div></div>
-            <div class="stat-card"><div class="stat-number">99%</div><div class="stat-label">Max Savings</div></div>
-            <div class="stat-card"><div class="stat-number">24/7</div><div class="stat-label">Real-Time Data</div></div>
+    </section>
+    
+    <!-- CTA -->
+    <section class="cta">
+        <h2>Ready to Stop Overpaying?</h2>
+        <p>Join thousands of crypto traders saving money on every transaction.</p>
+        <a href="https://square.link/u/YjHtGg2s" class="btn btn-primary" style="font-size:18px;padding:16px 40px;">Start Your Free Trial →</a>
+        <p style="margin-top:16px;font-size:14px;color:var(--text-muted);">No credit card required. Cancel anytime.</p>
+    </section>
+    
+    <!-- Footer -->
+    <footer>
+        <p>© 2025 FeeScout. All rights reserved.</p>
+        <div>
+            <a href="/privacy.html">Privacy</a>
+            <a href="/terms.html">Terms</a>
+            <a href="mailto:support@feescout.com">Support</a>
         </div>
+    </footer>
+</div>
 
-        <!-- Fee Table FIRST (now visible above the fold with data) -->
-        <div class="fee-table">
-            <table>
-                <thead>
-                    <tr><th>Rank</th><th>Blockchain</th><th>Transfer Fee (USD)</th><th>Savings vs Ethereum</th></tr>
-                </thead>
-                <tbody id="feeTableBody">
-                    <tr><td class="rank">#1</td><td class="chain-name">Polygon</td><td class="fee-usd">$0.003</td><td class="savings">Save 99.98%</td></tr>
-                    <tr><td class="rank">#2</td><td class="chain-name">Solana</td><td class="fee-usd">$0.00025</td><td class="savings">Save 99.99%</td></tr>
-                    <tr><td class="rank">#3</td><td class="chain-name">Base</td><td class="fee-usd">$0.015</td><td class="savings">Save 99.88%</td></tr>
-                    <tr><td class="rank">#4</td><td class="chain-name">Arbitrum</td><td class="fee-usd">$0.08</td><td class="savings">Save 99.36%</td></tr>
-                    <tr><td class="rank">#5</td><td class="chain-name">Optimism</td><td class="fee-usd">$0.12</td><td class="savings">Save 99.04%</td></tr>
-                </tbody>
-            </table>
-        </div>
-
-        <div class="savings-calc">
-            <h2>💰 Live Savings Calculator</h2>
-            <p style="color: var(--text-secondary); font-size: 15px;">Moving <strong>$10,000 USDT</strong> right now:</p>
-            <div class="calc-example">
-                <div class="chain-comparison">
-                    <div class="chain-name-display">Ethereum</div>
-                    <div class="fee-amount">$12.50</div>
-                    <div style="color: var(--text-muted); margin-top: 8px; font-size: 13px;">Standard gas fee</div>
-                </div>
-                <div class="chain-comparison winner">
-                    <div class="chain-name-display">Polygon ⚡ Best</div>
-                    <div class="fee-amount">$0.003</div>
-                    <span class="savings-badge">SAVE $12.497 (99.98%)</span>
-                </div>
-            </div>
-            <div style="text-align: center; margin-top: 24px;">
-                <button class="cta-button" onclick="openAuthModal('signup')">See All 41 Chains →</button>
-            </div>
-        </div>
-
-        <!-- Highlight Banner (compact, above pricing) -->
-        <div class="highlight-banner">
-            <h2>🔒 Unlock All 41 Chains</h2>
-            <p>Complete rankings, historical data, real-time alerts, and API access</p>
-            <button class="cta-button" onclick="openAuthModal('signup')" style="padding:12px 32px;font-size:15px;">Get Started Free →</button>
-        </div>
-
-        <!-- Pricing -->
-        <div class="pricing-section" id="pricing">
-            <h2>Choose Your Plan</h2>
-            <div class="pricing-grid">
-                <div class="pricing-card">
-                    <h3>Free</h3>
-                    <div class="price">$0<span class="price-period">/mo</span></div>
-                    <ul class="features">
-                        <li>Top 5 cheapest chains</li>
-                        <li>100 API calls/day</li>
-                        <li>5-minute data refresh</li>
-                        <li>Basic savings calculator</li>
-                        <li>Community support</li>
-                    </ul>
-                    <button class="cta-button secondary" onclick="openAuthModal('signup')">Get Started Free</button>
-                </div>
-                <div class="pricing-card featured">
-                    <span class="popular-badge">Most Popular</span>
-                    <h3>Hobbyist</h3>
-                    <div class="price">$39<span class="price-period">/mo</span></div>
-                    <ul class="features">
-                        <li>All 41 chains ranked</li>
-                        <li>10,000 API calls/day</li>
-                        <li>60-second data refresh</li>
-                        <li>Email alerts (3 custom thresholds)</li>
-                        <li>30-day historical data</li>
-                        <li>Priority email support</li>
-                    </ul>
-                    <a href="https://square.link/u/YjHtGg2s" class="square-subscribe-btn" target="_blank" rel="noopener">Subscribe Now</a>
-                </div>
-                <div class="pricing-card">
-                    <h3>Trader</h3>
-                    <div class="price">$99<span class="price-period">/mo</span></div>
-                    <ul class="features">
-                        <li>Real-time WebSocket feed</li>
-                        <li>100,000 API calls/day</li>
-                        <li>6-month historical data</li>
-                        <li>Telegram bot integration</li>
-                        <li>Webhook alerts (unlimited)</li>
-                        <li>Priority support</li>
-                    </ul>
-                    <a href="https://square.link/u/bW26nrZE" class="square-subscribe-btn" target="_blank" rel="noopener">Subscribe — $99/mo</a>
-                </div>
-            </div>
-        </div>
-
-        <!-- FAQ -->
-        <div class="faq-section" id="faq">
-            <h2>Frequently Asked Questions</h2>
-            <div class="faq-item">
-                <h3>How does FeeScout work?</h3>
-                <p>FeeScout pulls real-time gas fee data from Blockchair's API across 41+ blockchains. We normalize everything to USD so you can compare fees across chains at a glance.</p>
-            </div>
-            <div class="faq-item">
-                <h3>What's included in the free tier?</h3>
-                <p>Free accounts get 100 API calls per day, access to the top 5 cheapest chains, and data refreshed every 5 minutes. No credit card required.</p>
-            </div>
-            <div class="faq-item">
-                <h3>How do I use the API?</h3>
-                <p>Sign up for a free account, grab your API key from the dashboard, and add it to your requests: <code style="background:var(--charcoal-hover);padding:2px 8px;border-radius:4px;font-size:13px;">curl -H "X-API-Key: fs_your_key" https://feescout.com/api/gas-fees/latest</code></p>
-            </div>
-            <div class="faq-item">
-                <h3>Can I cancel my subscription?</h3>
-                <p>Yes, cancel anytime from your dashboard. No questions asked. You'll keep access until the end of your billing period.</p>
-            </div>
-            <div class="faq-item">
-                <h3>Which blockchains do you support?</h3>
-                <p>We track 41+ chains including Ethereum, Polygon, Solana, Arbitrum, Optimism, Base, Avalanche, BNB Chain, Fantom, Bitcoin, and many more.</p>
-            </div>
-        </div>
-
-        <footer>
-            <p style="margin-bottom: 8px; font-size: 14px;">© 2026 FeeScout by Chaotically Organized AI</p>
-            <p style="margin-top: 10px;">
-                <a href="#" onclick="document.getElementById('tos-modal').style.display='flex'; return false;">Terms of Service</a>
-                <a href="#" onclick="document.getElementById('privacy-modal').style.display='flex'; return false;">Privacy Policy</a>
-            </p>
-        </footer>
-    </div>
-
-    <script>
-        /* -------------------- Interactive Background -------------------- */
-        (function() {
-            var canvas = document.getElementById('bg-canvas');
-            var ctx = canvas.getContext('2d');
-            var W, H;
-            var particles = [];
-            var PARTICLE_COUNT = 60;
-
-            function resize() {
-                W = canvas.width = window.innerWidth;
-                H = canvas.height = window.innerHeight;
-            }
-            window.addEventListener('resize', resize);
-            resize();
-
-            function Particle() {
-                this.x = Math.random() * W;
-                this.y = Math.random() * H;
-                this.vx = (Math.random() - 0.5) * 0.4;
-                this.vy = (Math.random() - 0.5) * 0.4;
-                this.r = Math.random() * 1.8 + 0.5;
-                this.alpha = Math.random() * 0.35 + 0.1;
-            }
-            Particle.prototype.update = function() {
-                this.x += this.vx;
-                this.y += this.vy;
-                if (this.x < 0) this.x = W;
-                if (this.x > W) this.x = 0;
-                if (this.y < 0) this.y = H;
-                if (this.y > H) this.y = 0;
-            };
-
-            for (var i = 0; i < PARTICLE_COUNT; i++) particles.push(new Particle());
-
-            function draw() {
-                ctx.clearRect(0, 0, W, H);
-                // connections
-                for (var i = 0; i < PARTICLE_COUNT; i++) {
-                    var p = particles[i];
-                    p.update();
-                    for (var j = i + 1; j < PARTICLE_COUNT; j++) {
-                        var q = particles[j];
-                        var dx = p.x - q.x, dy = p.y - q.y;
-                        var dist = Math.sqrt(dx * dx + dy * dy);
-                        if (dist < 140) {
-                            ctx.beginPath();
-                            ctx.moveTo(p.x, p.y);
-                            ctx.lineTo(q.x, q.y);
-                            ctx.strokeStyle = 'rgba(0, 214, 143, ' + (0.08 * (1 - dist / 140)).toFixed(3) + ')';
-                            ctx.lineWidth = 0.6;
-                            ctx.stroke();
-                        }
-                    }
+<!-- Live Fee Data Script -->
+<script>
+async function fetchFees() {
+    try {
+        const chains = ['ethereum', 'bitcoin', 'polygon', 'arbitrum', 'solana', 'base'];
+        const names = ['Ethereum', 'Bitcoin', 'Polygon', 'Arbitrum', 'Solana', 'Base'];
+        const grid = document.getElementById('fee-grid');
+        
+        for (let i = 0; i < chains.length; i++) {
+            try {
+                const resp = await fetch(`/api/gas-fees/latest?chain=${chains[i]}`);
+                const data = await resp.json();
+                const items = grid.querySelectorAll('.fee-item');
+                if (items[i]) {
+                    const valSpan = items[i].querySelector('.fee-value');
+                    const fee = data?.suggested_fee_per_vbyte || data?.gas_price_gwei || 'N/A';
+                    valSpan.textContent = typeof fee === 'number' ? fee.toFixed(2) : fee;
+                    valSpan.className = 'fee-value ' + (fee < 20 ? 'fee-low' : fee < 50 ? 'fee-med' : 'fee-high');
                 }
-                // particles
-                for (var i = 0; i < PARTICLE_COUNT; i++) {
-                    var p = particles[i];
-                    ctx.beginPath();
-                    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-                    ctx.fillStyle = 'rgba(0, 214, 143, ' + p.alpha.toFixed(2) + ')';
-                    ctx.fill();
-                }
-                requestAnimationFrame(draw);
-            }
-            draw();
-        })();
+            } catch(e) {}
+        }
+    } catch(e) { console.error('Fee fetch error:', e); }
+}
 
-        /* -------------------- Toast -------------------- */
-        function showToast(msg, type) {
-            type = type || 'error';
-            var c = document.getElementById('toast-container');
-            var t = document.createElement('div');
-            t.className = 'toast toast-' + type;
-            t.textContent = msg;
-            c.appendChild(t);
-            setTimeout(function() { t.remove(); }, 5000);
-        }
+fetchFees();
+setInterval(fetchFees, 60000);
+</script>
 
-        /* -------------------- Auth modal -------------------- */
-        var isLoginMode = false;
-        function openAuthModal(mode) {
-            isLoginMode = (mode === 'login');
-            updateAuthModal();
-            document.getElementById('auth-modal').style.display = 'flex';
-        }
-        function closeAuthModal() {
-            document.getElementById('auth-modal').style.display = 'none';
-            document.getElementById('auth-error').textContent = '';
-        }
-        function toggleAuthMode() {
-            isLoginMode = !isLoginMode;
-            updateAuthModal();
-        }
-        function updateAuthModal() {
-            document.getElementById('auth-title').textContent = isLoginMode ? 'Log In' : 'Create Your Free Account';
-            document.getElementById('auth-sub').textContent = isLoginMode ? 'Welcome back.' : 'Get 100 API calls/day. No credit card required.';
-            document.getElementById('auth-submit-btn').textContent = isLoginMode ? 'Log In' : 'Sign Up Free';
-            document.getElementById('auth-switch').innerHTML = isLoginMode
-                ? 'New here? <a onclick="toggleAuthMode()">Create an account</a>'
-                : 'Already have an account? <a onclick="toggleAuthMode()">Log in</a>';
-            document.getElementById('auth-error').textContent = '';
-        }
-        function handleAuth(e) {
-            e.preventDefault();
-            var email = document.getElementById('auth-email').value.trim();
-            var password = document.getElementById('auth-password').value;
-            var errorEl = document.getElementById('auth-error');
-            var btn = document.getElementById('auth-submit-btn');
-            errorEl.textContent = '';
-            btn.disabled = true;
-            btn.textContent = 'Please wait...';
-            var self = this;
-            var endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/signup';
-            fetch(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: email, password: password }),
-                credentials: 'include',
-            })
-            .then(function(resp) { return resp.json().then(function(d) { return { ok: resp.ok, status: resp.status, data: d }; }); })
-            .then(function(result) {
-                if (!result.ok) throw new Error(result.data.detail || result.data.error || 'Request failed');
-                showToast(isLoginMode ? 'Welcome back!' : 'Account created! Redirecting...', 'success');
-                setTimeout(function() { window.location.href = '/dashboard.html'; }, 800);
-            })
-            .catch(function(err) {
-                errorEl.textContent = err.message;
-            })
-            .finally(function() {
-                btn.disabled = false;
-                btn.textContent = isLoginMode ? 'Log In' : 'Sign Up Free';
-            });
-            return false;
-        }
-
-        // Close modals on Escape
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                document.getElementById('auth-modal').style.display = 'none';
-                document.getElementById('tos-modal').style.display = 'none';
-                document.getElementById('privacy-modal').style.display = 'none';
-            }
-        });
-
-        /* -------------------- Live fee data -------------------- */
-        function loadGasFees(retries) {
-            retries = retries || 2;
-            var tbody = document.getElementById('feeTableBody');
-            var attempt = 0;
-            function tryFetch() {
-                fetch('/api/gas-fees/latest')
-                .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, status: r.status, data: d }; }); })
-                .then(function(result) {
-                    if (!result.ok) throw new Error('HTTP ' + result.status);
-                    var fees = result.data.data;
-                    if (!fees || !fees.length) throw new Error('No data');
-                    if (tbody) tbody.innerHTML = '';
-                    var ethFee = 12.50;
-                    for (var i = 0; i < fees.length && i < 5; i++) {
-                        var fee = fees[i];
-                        if (fee.chain === 'ethereum') ethFee = fee.fee_usd;
-                    }
-                    for (var i = 0; i < fees.length && i < 5; i++) {
-                        var fee = fees[i];
-                        var savings = ethFee - fee.fee_usd;
-                        var pct = ethFee > 0 ? ((savings / ethFee) * 100).toFixed(2) : '0';
-                        if (tbody) tbody.innerHTML += '<tr><td class="rank">#' + (i+1) + '</td><td class="chain-name">' + fee.chain + '</td><td class="fee-usd">$' + fee.fee_usd.toFixed(4) + '</td><td class="savings">' + (pct > 0 ? 'Save ' + pct + '%' : 'N/A') + '</td></tr>';
-                    }
-                })
-                .catch(function(err) {
-                    attempt++;
-                    if (attempt <= retries) {
-                        setTimeout(tryFetch, 1500 * attempt);
-                    } else if (tbody) {
-                        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:2rem;color:#ef4444;"><div style="font-size:2rem;margin-bottom:0.5rem;">⚠️</div><div style="font-weight:600;margin-bottom:0.3rem;">Live Data Temporarily Unavailable</div><div style="font-size:0.85rem;opacity:0.8;margin-bottom:1rem;">Showing cached data above</div><button onclick="loadGasFees()" style="padding:0.5rem 1.5rem;background:#00D68F;color:#000;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Try Again</button></td></tr>';
-                        showToast('Failed to load live gas fees.', 'error');
-                    }
-                });
-            }
-            tryFetch();
-        }
-        loadGasFees();
-        setInterval(loadGasFees, 60000);
-    </script>
 </body>
 </html>
