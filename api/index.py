@@ -917,9 +917,33 @@ async def square_webhook(request: Request):
 # ---------------------------------------------------------------------------
 # Root / Health
 # ---------------------------------------------------------------------------
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _read_html(filename: str) -> str:
+    path = os.path.join(BASE_DIR, filename)
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
+
+
 @app.get("/")
-async def root():
-    return {"service": "FeeScout API", "version": "2.1.0", "status": "ok"}
+async def serve_index():
+    return HTMLResponse(content=_read_html("index.html"))
+
+
+@app.get("/dashboard")
+async def serve_dashboard():
+    return HTMLResponse(content=_read_html("dashboard.html"))
+
+
+@app.get("/privacy-policy")
+async def serve_privacy():
+    return HTMLResponse(content=_read_html("privacy-policy.html"))
+
+
+@app.get("/feescoutlogo.png")
+async def serve_logo():
+    return FileResponse(os.path.join(BASE_DIR, "feescoutlogo.png"), media_type="image/png")
 
 
 @app.get("/api/health")
