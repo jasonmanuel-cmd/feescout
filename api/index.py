@@ -83,13 +83,12 @@ _fee_cache: dict = {"data": None, "timestamp": None, "ttl_seconds": 60}
 # ---------------------------------------------------------------------------
 def _parse_db_url(url: str) -> dict:
     """Parse a postgres:// URL into pg8000 connect kwargs.
-    Handles Supabase pooler: uses port 6543 if no port is specified and
-    respects ?pgbouncer=true query param."""
-    from urllib.parse import urlparse, parse_qs
+    For Supabase hosts, forces the connection-pooler port (6543)
+    since Vercel serverless cannot connect to port 5432 directly."""
+    from urllib.parse import urlparse
     p = urlparse(url)
-    params = parse_qs(p.query)
-    use_pooler = params.get("pgbouncer", [""])[0].lower() == "true"
-    port = p.port or (6543 if use_pooler else 5432)
+    is_supabase = p.hostname and "supabase.co" in p.hostname
+    port = 6543 if is_supabase else (p.port or 5432)
     import ssl
     return {
         "host": p.hostname,
