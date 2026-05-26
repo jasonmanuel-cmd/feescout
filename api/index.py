@@ -22,7 +22,7 @@ app = FastAPI(title="FeeScout API", version="2.1.0")
 
 ALLOWED_ORIGINS = [
     orig.strip()
-    for orig in os.getenv("ALLOWED_ORIGINS", "https://feescout.com,https://www.feescout.com,https://feescout.vercel.app").split(",")
+    for orig in os.getenv("ALLOWED_ORIGINS", "https://feescout.com,https://www.feescout.com,https://www.feescout.bond").split(",")
 ]
 
 app.add_middleware(
@@ -82,16 +82,22 @@ _fee_cache: dict = {"data": None, "timestamp": None, "ttl_seconds": 60}
 # Database helpers
 # ---------------------------------------------------------------------------
 def _parse_db_url(url: str) -> dict:
-    """Parse a postgres:// URL into pg8000 connect kwargs."""
-    from urllib.parse import urlparse
+    """Parse a postgres:// URL into pg8000 connect kwargs.
+    Handles Supabase pooler: uses port 6543 if no port is specified and
+    respects ?pgbouncer=true query param."""
+    from urllib.parse import urlparse, parse_qs
     p = urlparse(url)
+    params = parse_qs(p.query)
+    use_pooler = params.get("pgbouncer", [""])[0].lower() == "true"
+    port = p.port or (6543 if use_pooler else 5432)
+    import ssl
     return {
         "host": p.hostname,
-        "port": p.port or 5432,
+        "port": port,
         "database": p.path.lstrip("/"),
         "user": p.username,
         "password": p.password,
-        "ssl_context": True,  # Supabase requires SSL
+        "ssl_context": ssl.create_default_context(),
     }
 
 
