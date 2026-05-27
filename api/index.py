@@ -10,9 +10,12 @@ import logging
 import os
 import secrets
 import ssl
+import time
+from collections import defaultdict
 from contextlib import contextmanager
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
+from threading import Lock
 from typing import Optional
 from urllib.parse import urlparse
 
@@ -22,16 +25,30 @@ from fastapi import FastAPI, Query, Response, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel, EmailStr
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
 
 logger = logging.getLogger("feescout")
 
-limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(title="FeeScout API", version="2.1.0")
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# ---------------------------------------------------------------------------
+# Simple in-process rate limiter (per-IP, sliding window)
+# Note: stateless across Vercel instances — good enough to slow brute force
+# within a single function instance. For cross-instance limiting use Upstash.
+# ---------------------------------------------------------------------------
+_rate_store: dict = defaultdict(list)
+_rate_lock = Lock()
+
+
+def _check_rate_limit_ip(request: Request, max_calls: int, window_seconds: int) -> None:
+    ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "unknown").split(",")[0].strip()
+    now = time.time()
+    key = f"{ip}:{request.url.path}"
+    with _rate_lock:
+        calls = [t for t in _rate_store[key] if now - t < window_seconds]
+        if len(calls) >= max_calls:
+            raise HTTPException(429, "Too many requests. Please try again later.")
+        calls.append(now)
+        _rate_store[key] = calls
 
 ALLOWED_ORIGINS = [
     orig.strip()
@@ -449,8 +466,8 @@ class ResetPasswordRequest(BaseModel):
 # Auth routes
 # ---------------------------------------------------------------------------
 @app.post("/api/auth/signup")
-@limiter.limit("5/minute")
 def signup(request: Request, req: SignupRequest, response: Response):
+    _check_rate_limit_ip(request, max_calls=5, window_seconds=60)
     if len(req.password) < 8:
         raise HTTPException(400, "Password must be at least 8 characters")
 
@@ -489,8 +506,8 @@ def signup(request: Request, req: SignupRequest, response: Response):
 
 
 @app.post("/api/auth/login")
-@limiter.limit("10/minute")
 def login(request: Request, req: LoginRequest, response: Response):
+    _check_rate_limit_ip(request, max_calls=10, window_seconds=60)
     with db_connection() as conn:
         rows = conn.run("SELECT * FROM users WHERE email = :email", email=req.email.lower())
         cols = [c["name"] for c in conn.columns]
