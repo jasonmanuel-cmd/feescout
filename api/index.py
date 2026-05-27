@@ -6,6 +6,9 @@ from fastapi import FastAPI, Response, Request, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from pydantic import BaseModel, EmailStr
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 import pg8000.native
 import requests
 import os
@@ -18,7 +21,10 @@ from typing import Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import hmac as hmac_lib
 
+limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(title="FeeScout API", version="2.1.0")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 ALLOWED_ORIGINS = [
     orig.strip()
@@ -32,6 +38,23 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "img-src 'self' data:; "
+        "connect-src 'self' https://feescout.bond https://feescout.com https://www.feescout.com;"
+    )
+    return response
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -51,8 +74,9 @@ SQUARE_TIER_BY_AMOUNT: dict = {
     9900: "trader",
 }
 
-# Master account email — always gets trader tier
-MASTER_EMAILS = {os.getenv("MASTER_EMAIL", "blunts954@gmail.com")}
+# Master account email — always gets trader tier. No fallback: fail loudly if not set.
+_master_email = os.getenv("MASTER_EMAIL")
+MASTER_EMAILS = {_master_email} if _master_email else set()
 
 # Rate limits per tier (requests per day)
 RATE_LIMITS = {
@@ -247,7 +271,7 @@ def set_session_cookie(response: Response, token: str, request: Request):
         value=token,
         httponly=True,
         secure=_is_https(request),
-        samesite="lax",
+        samesite="strict",
         max_age=SESSION_DAYS * 86400,
         path="/",
     )
@@ -401,7 +425,8 @@ class ResetPasswordRequest(BaseModel):
 # Auth routes
 # ---------------------------------------------------------------------------
 @app.post("/api/auth/signup")
-async def signup(req: SignupRequest, response: Response, request: Request):
+@limiter.limit("5/minute")
+async def signup(request: Request, req: SignupRequest, response: Response):
     if len(req.password) < 8:
         raise HTTPException(400, "Password must be at least 8 characters")
 
@@ -421,7 +446,7 @@ async def signup(req: SignupRequest, response: Response, request: Request):
     except Exception as e:
         conn.close()
         if "unique" in str(e).lower() or "duplicate" in str(e).lower():
-            raise HTTPException(409, "An account with this email already exists")
+            raise HTTPException(409, "Could not create account. Try logging in instead.")
         raise HTTPException(500, "Could not create account")
     finally:
         conn.close()
@@ -441,7 +466,8 @@ async def signup(req: SignupRequest, response: Response, request: Request):
 
 
 @app.post("/api/auth/login")
-async def login(req: LoginRequest, response: Response, request: Request):
+@limiter.limit("10/minute")
+async def login(request: Request, req: LoginRequest, response: Response):
     conn = _require_db()
     rows = conn.run("SELECT * FROM users WHERE email = :email", email=req.email.lower())
     cols = [c["name"] for c in conn.columns]
@@ -506,7 +532,7 @@ RESET_EMAIL_HTML = """
 @app.post("/api/auth/forgot-password")
 async def forgot_password(req: ForgotPasswordRequest, request: Request):
     """Send a password-reset email. Always returns 200 to avoid email enumeration."""
-    conn = get_db()
+    conn = _require_db()
     rows = conn.run("SELECT id FROM users WHERE email = :email", email=req.email.lower())
     conn.close()
 
@@ -897,7 +923,10 @@ async def square_webhook(request: Request):
     # Build the exact notification URL Square will sign against
     notification_url = str(request.url)
 
-    if SQUARE_WEBHOOK_SIGNATURE_KEY and not _verify_square_signature(body, signature, notification_url):
+    if not SQUARE_WEBHOOK_SIGNATURE_KEY:
+        print("[FeeScout] Square webhook: SQUARE_WEBHOOK_SIGNATURE_KEY not configured — rejected")
+        raise HTTPException(503, "Webhook not configured")
+    if not _verify_square_signature(body, signature, notification_url):
         print("[FeeScout] Square webhook: invalid signature — rejected")
         raise HTTPException(403, "Invalid signature")
 

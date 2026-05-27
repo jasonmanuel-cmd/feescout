@@ -61,7 +61,7 @@ STEP 5: Set Environment Variable
 4. Add new variable:
 
    Name:  BLOCKCHAIR_API_KEY
-   Value: G___MTJ7PgczS9WHwUrUVqPVA4m4qqXf
+   Value: <your-blockchair-api-key>  ⚠️  Get from blockchair.com/api — do NOT commit real keys
 
 5. Click "Save"
 6. Redeploy: Run "vercel --prod" again
