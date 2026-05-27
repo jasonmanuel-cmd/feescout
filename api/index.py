@@ -2,24 +2,31 @@
 FeeScout — Complete backend API with auth, user management, and dashboard.
 Deployed on Vercel as api/index.py (FastAPI + Supabase Postgres).
 """
-from fastapi import FastAPI, Response, Request, HTTPException, Depends
+import base64
+import hashlib
+import hmac as hmac_lib
+import json
+import logging
+import os
+import secrets
+import ssl
+from contextlib import contextmanager
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timedelta, timezone
+from typing import Optional
+from urllib.parse import urlparse
+
+import pg8000.native
+import requests
+from fastapi import FastAPI, Query, Response, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel, EmailStr
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-import pg8000.native
-import requests
-import os
-import json
-import secrets
-import hashlib
-import time
-from datetime import datetime, timedelta, timezone
-from typing import Optional
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import hmac as hmac_lib
+
+logger = logging.getLogger("feescout")
 
 limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(title="FeeScout API", version="2.1.0")
@@ -109,11 +116,9 @@ def _parse_db_url(url: str) -> dict:
     """Parse a postgres:// URL into pg8000 connect kwargs.
     For Supabase hosts, forces the connection-pooler port (6543)
     since Vercel serverless cannot connect to port 5432 directly."""
-    from urllib.parse import urlparse
     p = urlparse(url)
     is_supabase = p.hostname and "supabase.co" in p.hostname
     port = 6543 if is_supabase else (p.port or 5432)
-    import ssl
     return {
         "host": p.hostname,
         "port": port,
@@ -124,22 +129,31 @@ def _parse_db_url(url: str) -> dict:
     }
 
 
-def get_db():
+def get_db() -> Optional[pg8000.native.Connection]:
     """Open a new Postgres connection using the DATABASE_URL env var.
     Returns None if DATABASE_URL is not configured."""
     if not DATABASE_URL:
         return None
     kwargs = _parse_db_url(DATABASE_URL)
-    conn = pg8000.native.Connection(**kwargs)
-    return conn
+    return pg8000.native.Connection(**kwargs)
 
 
-def _require_db():
+def _require_db() -> pg8000.native.Connection:
     """Return a DB connection or raise HTTP 503 if not configured."""
     conn = get_db()
     if conn is None:
         raise HTTPException(503, "Database not configured")
     return conn
+
+
+@contextmanager
+def db_connection():
+    """Context manager that opens a DB connection and ensures it is closed."""
+    conn = _require_db()
+    try:
+        yield conn
+    finally:
+        conn.close()
 
 
 def _row_to_dict(columns, row):
@@ -158,64 +172,64 @@ def _is_https(request: Request) -> bool:
     return proto == "https" or request.url.scheme == "https"
 
 
-def init_db():
+def init_db() -> None:
     """Create tables if they don't exist. Safe to call on every cold start."""
-    conn = get_db()
-    conn.run("""
-        CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            email TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            api_key TEXT UNIQUE NOT NULL,
-            tier TEXT DEFAULT 'free',
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL,
-            last_login TEXT,
-            square_customer_id TEXT,
-            subscribed_at TEXT
-        )
-    """)
-    conn.run("""
-        CREATE TABLE IF NOT EXISTS sessions (
-            token TEXT PRIMARY KEY,
-            user_id INTEGER NOT NULL REFERENCES users(id),
-            created_at TEXT NOT NULL,
-            expires_at TEXT NOT NULL
-        )
-    """)
-    conn.run("""
-        CREATE TABLE IF NOT EXISTS usage_log (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER REFERENCES users(id),
-            api_key TEXT,
-            endpoint TEXT NOT NULL,
-            ts TEXT NOT NULL,
-            status_code INTEGER
-        )
-    """)
-    conn.run("""
-        CREATE TABLE IF NOT EXISTS password_resets (
-            token TEXT PRIMARY KEY,
-            user_id INTEGER NOT NULL REFERENCES users(id),
-            created_at TEXT NOT NULL,
-            expires_at TEXT NOT NULL,
-            used INTEGER DEFAULT 0
-        )
-    """)
-    conn.run("CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token)")
-    conn.run("CREATE INDEX IF NOT EXISTS idx_users_api_key ON users(api_key)")
-    conn.run("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
-    conn.run("CREATE INDEX IF NOT EXISTS idx_usage_user_ts ON usage_log(user_id, ts)")
-    conn.run("""
-        CREATE TABLE IF NOT EXISTS email_subscribers (
-            id SERIAL PRIMARY KEY,
-            email TEXT UNIQUE NOT NULL,
-            created_at TEXT NOT NULL,
-            active INTEGER DEFAULT 1
-        )
-    """)
-    conn.run("CREATE INDEX IF NOT EXISTS idx_email_subs_email ON email_subscribers(email)")
-    conn.close()
+    with db_connection() as conn:
+        conn.run("""
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                email TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                api_key TEXT UNIQUE NOT NULL,
+                tier TEXT DEFAULT 'free',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                last_login TEXT,
+                square_customer_id TEXT,
+                subscribed_at TEXT
+            )
+        """)
+        conn.run("""
+            CREATE TABLE IF NOT EXISTS sessions (
+                token TEXT PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id),
+                created_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL
+            )
+        """)
+        conn.run("""
+            CREATE TABLE IF NOT EXISTS usage_log (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id),
+                api_key TEXT,
+                endpoint TEXT NOT NULL,
+                ts TEXT NOT NULL,
+                status_code INTEGER
+            )
+        """)
+        conn.run("""
+            CREATE TABLE IF NOT EXISTS password_resets (
+                token TEXT PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id),
+                created_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                used INTEGER DEFAULT 0
+            )
+        """)
+        conn.run("CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token)")
+        conn.run("CREATE INDEX IF NOT EXISTS idx_users_api_key ON users(api_key)")
+        conn.run("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
+        conn.run("CREATE INDEX IF NOT EXISTS idx_usage_user_ts ON usage_log(user_id, ts)")
+        conn.run("CREATE INDEX IF NOT EXISTS idx_resets_token ON password_resets(token)")
+        conn.run("""
+            CREATE TABLE IF NOT EXISTS email_subscribers (
+                id SERIAL PRIMARY KEY,
+                email TEXT UNIQUE NOT NULL,
+                created_at TEXT NOT NULL,
+                active INTEGER DEFAULT 1
+            )
+        """)
+        conn.run("CREATE INDEX IF NOT EXISTS idx_email_subs_email ON email_subscribers(email)")
 
 
 # Only run init_db if DATABASE_URL is configured
@@ -223,7 +237,7 @@ if DATABASE_URL:
     try:
         init_db()
     except Exception as e:
-        print(f"[FeeScout] DB init warning: {e}")
+        logger.warning("DB init warning: %s", e)
 
 
 # ---------------------------------------------------------------------------
@@ -238,10 +252,10 @@ def hash_password(password: str) -> str:
 def verify_password(password: str, stored: str) -> bool:
     try:
         salt, hex_hash = stored.split("$", 1)
-        pw_hash = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 100_000)
-        return hmac_lib.compare_digest(pw_hash.hex(), hex_hash)
-    except Exception:
+    except ValueError:
         return False
+    pw_hash = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 100_000)
+    return hmac_lib.compare_digest(pw_hash.hex(), hex_hash)
 
 
 def generate_api_key() -> str:
@@ -256,12 +270,11 @@ def create_session(user_id: int) -> str:
     token = generate_session_token()
     now = datetime.now(timezone.utc)
     expires = now + timedelta(days=SESSION_DAYS)
-    conn = get_db()
-    conn.run(
-        "INSERT INTO sessions (token, user_id, created_at, expires_at) VALUES (:token, :uid, :created, :expires)",
-        token=token, uid=user_id, created=now.isoformat(), expires=expires.isoformat(),
-    )
-    conn.close()
+    with db_connection() as conn:
+        conn.run(
+            "INSERT INTO sessions (token, user_id, created_at, expires_at) VALUES (:token, :uid, :created, :expires)",
+            token=token, uid=user_id, created=now.isoformat(), expires=expires.isoformat(),
+        )
     return token
 
 
@@ -282,14 +295,18 @@ def get_user_from_session(request: Request) -> Optional[dict]:
     if not token:
         return None
     conn = get_db()
-    rows = conn.run(
-        """SELECT u.* FROM users u
-           JOIN sessions s ON s.user_id = u.id
-           WHERE s.token = :token AND s.expires_at > :now""",
-        token=token, now=datetime.now(timezone.utc).isoformat(),
-    )
-    cols = [c["name"] for c in conn.columns]
-    conn.close()
+    if conn is None:
+        return None
+    try:
+        rows = conn.run(
+            """SELECT u.* FROM users u
+               JOIN sessions s ON s.user_id = u.id
+               WHERE s.token = :token AND s.expires_at > :now""",
+            token=token, now=datetime.now(timezone.utc).isoformat(),
+        )
+        cols = [c["name"] for c in conn.columns]
+    finally:
+        conn.close()
     return _row_to_dict(cols, rows[0] if rows else None)
 
 
@@ -297,9 +314,13 @@ def get_user_from_api_key(api_key: str) -> Optional[dict]:
     if not api_key:
         return None
     conn = get_db()
-    rows = conn.run("SELECT * FROM users WHERE api_key = :key", key=api_key)
-    cols = [c["name"] for c in conn.columns]
-    conn.close()
+    if conn is None:
+        return None
+    try:
+        rows = conn.run("SELECT * FROM users WHERE api_key = :key", key=api_key)
+        cols = [c["name"] for c in conn.columns]
+    finally:
+        conn.close()
     return _row_to_dict(cols, rows[0] if rows else None)
 
 
@@ -318,40 +339,43 @@ def check_rate_limit(user: dict) -> bool:
     limit = RATE_LIMITS.get(tier, 100)
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     conn = get_db()
-    rows = conn.run(
-        "SELECT COUNT(*) AS cnt FROM usage_log WHERE user_id = :uid AND ts LIKE :today",
-        uid=user["id"], today=f"{today}%",
-    )
-    conn.close()
+    if conn is None:
+        return True  # No DB = no rate tracking, allow through
+    try:
+        rows = conn.run(
+            "SELECT COUNT(*) AS cnt FROM usage_log WHERE user_id = :uid AND ts LIKE :today",
+            uid=user["id"], today=f"{today}%",
+        )
+    finally:
+        conn.close()
     cnt = rows[0][0] if rows else 0
     return cnt < limit
 
 
-def log_request(user_id: Optional[int], api_key: Optional[str], endpoint: str, status_code: int):
+def log_request(user_id: Optional[int], api_key: Optional[str], endpoint: str, status_code: int) -> None:
     if not DATABASE_URL:
         return
     try:
-        conn = get_db()
-        conn.run(
-            "INSERT INTO usage_log (user_id, api_key, endpoint, ts, status_code) VALUES (:uid, :key, :ep, :ts, :sc)",
-            uid=user_id, key=api_key, ep=endpoint,
-            ts=datetime.now(timezone.utc).isoformat(), sc=status_code,
-        )
-        conn.close()
+        with db_connection() as conn:
+            conn.run(
+                "INSERT INTO usage_log (user_id, api_key, endpoint, ts, status_code) VALUES (:uid, :key, :ep, :ts, :sc)",
+                uid=user_id, key=api_key, ep=endpoint,
+                ts=datetime.now(timezone.utc).isoformat(), sc=status_code,
+            )
     except Exception as e:
-        print(f"[FeeScout] log_request error: {e}")
+        logger.error("log_request error: %s", e)
 
 
-def ensure_master_tier(user: dict):
+def ensure_master_tier(user: dict) -> dict:
     if user["email"] in MASTER_EMAILS and user["tier"] != "trader":
-        conn = get_db()
         now = datetime.now(timezone.utc).isoformat()
-        conn.run(
-            "UPDATE users SET tier = 'trader', updated_at = :now WHERE id = :uid",
-            now=now, uid=user["id"],
-        )
-        conn.close()
-        user["tier"] = "trader"
+        with db_connection() as conn:
+            conn.run(
+                "UPDATE users SET tier = 'trader', updated_at = :now WHERE id = :uid",
+                now=now, uid=user["id"],
+            )
+        return {**user, "tier": "trader"}
+    return user
 
 
 # ---------------------------------------------------------------------------
@@ -426,7 +450,7 @@ class ResetPasswordRequest(BaseModel):
 # ---------------------------------------------------------------------------
 @app.post("/api/auth/signup")
 @limiter.limit("5/minute")
-async def signup(request: Request, req: SignupRequest, response: Response):
+def signup(request: Request, req: SignupRequest, response: Response):
     if len(req.password) < 8:
         raise HTTPException(400, "Password must be at least 8 characters")
 
@@ -435,21 +459,20 @@ async def signup(request: Request, req: SignupRequest, response: Response):
     now = datetime.now(timezone.utc).isoformat()
     initial_tier = "trader" if req.email in MASTER_EMAILS else "free"
 
-    conn = _require_db()
     try:
-        conn.run(
-            "INSERT INTO users (email, password_hash, api_key, tier, created_at, updated_at) VALUES (:email, :pw, :key, :tier, :now, :now2)",
-            email=req.email, pw=pw_hash, key=api_key, tier=initial_tier, now=now, now2=now,
-        )
-        rows = conn.run("SELECT id FROM users WHERE api_key = :key", key=api_key)
-        user_id = rows[0][0]
+        with db_connection() as conn:
+            conn.run(
+                "INSERT INTO users (email, password_hash, api_key, tier, created_at, updated_at) VALUES (:email, :pw, :key, :tier, :now, :now2)",
+                email=req.email, pw=pw_hash, key=api_key, tier=initial_tier, now=now, now2=now,
+            )
+            rows = conn.run("SELECT id FROM users WHERE api_key = :key", key=api_key)
+            user_id = rows[0][0]
+    except HTTPException:
+        raise
     except Exception as e:
-        conn.close()
         if "unique" in str(e).lower() or "duplicate" in str(e).lower():
             raise HTTPException(409, "Could not create account. Try logging in instead.")
         raise HTTPException(500, "Could not create account")
-    finally:
-        conn.close()
 
     token = create_session(user_id)
     set_session_cookie(response, token, request)
@@ -467,28 +490,20 @@ async def signup(request: Request, req: SignupRequest, response: Response):
 
 @app.post("/api/auth/login")
 @limiter.limit("10/minute")
-async def login(request: Request, req: LoginRequest, response: Response):
-    conn = _require_db()
-    rows = conn.run("SELECT * FROM users WHERE email = :email", email=req.email.lower())
-    cols = [c["name"] for c in conn.columns]
-    conn.close()
+def login(request: Request, req: LoginRequest, response: Response):
+    with db_connection() as conn:
+        rows = conn.run("SELECT * FROM users WHERE email = :email", email=req.email.lower())
+        cols = [c["name"] for c in conn.columns]
 
     user = _row_to_dict(cols, rows[0] if rows else None)
     if not user or not verify_password(req.password, user["password_hash"]):
         raise HTTPException(401, "Invalid email or password")
 
     now = datetime.now(timezone.utc).isoformat()
+    user = ensure_master_tier(user)
 
-    # Auto-promote master emails on login
-    if req.email.lower() in MASTER_EMAILS and user["tier"] != "trader":
-        conn = get_db()
-        conn.run("UPDATE users SET tier = 'trader', updated_at = :now WHERE id = :uid", now=now, uid=user["id"])
-        conn.close()
-        user["tier"] = "trader"
-
-    conn = get_db()
-    conn.run("UPDATE users SET last_login = :now, updated_at = :now2 WHERE id = :uid", now=now, now2=now, uid=user["id"])
-    conn.close()
+    with db_connection() as conn:
+        conn.run("UPDATE users SET last_login = :now, updated_at = :now2 WHERE id = :uid", now=now, now2=now, uid=user["id"])
 
     token = create_session(user["id"])
     set_session_cookie(response, token, request)
@@ -497,12 +512,15 @@ async def login(request: Request, req: LoginRequest, response: Response):
 
 
 @app.post("/api/auth/logout")
-async def logout(request: Request, response: Response):
+def logout(request: Request, response: Response):
     token = request.cookies.get(SESSION_COOKIE)
     if token:
         conn = get_db()
-        conn.run("DELETE FROM sessions WHERE token = :token", token=token)
-        conn.close()
+        if conn:
+            try:
+                conn.run("DELETE FROM sessions WHERE token = :token", token=token)
+            finally:
+                conn.close()
     response.delete_cookie(SESSION_COOKIE, path="/")
     return {"success": True}
 
@@ -530,23 +548,21 @@ RESET_EMAIL_HTML = """
 
 
 @app.post("/api/auth/forgot-password")
-async def forgot_password(req: ForgotPasswordRequest, request: Request):
+def forgot_password(req: ForgotPasswordRequest, request: Request):
     """Send a password-reset email. Always returns 200 to avoid email enumeration."""
-    conn = _require_db()
-    rows = conn.run("SELECT id FROM users WHERE email = :email", email=req.email.lower())
-    conn.close()
+    with db_connection() as conn:
+        rows = conn.run("SELECT id FROM users WHERE email = :email", email=req.email.lower())
 
     if rows:
         user_id = rows[0][0]
         token = secrets.token_urlsafe(48)
         now = datetime.now(timezone.utc)
         expires = now + timedelta(hours=1)
-        conn = get_db()
-        conn.run(
-            "INSERT INTO password_resets (token, user_id, created_at, expires_at) VALUES (:token, :uid, :created, :expires)",
-            token=token, uid=user_id, created=now.isoformat(), expires=expires.isoformat(),
-        )
-        conn.close()
+        with db_connection() as conn:
+            conn.run(
+                "INSERT INTO password_resets (token, user_id, created_at, expires_at) VALUES (:token, :uid, :created, :expires)",
+                token=token, uid=user_id, created=now.isoformat(), expires=expires.isoformat(),
+            )
 
         base_url = str(request.base_url).rstrip("/")
         reset_url = f"{base_url}/dashboard?reset_token={token}"
@@ -556,17 +572,16 @@ async def forgot_password(req: ForgotPasswordRequest, request: Request):
 
 
 @app.post("/api/auth/reset-password")
-async def reset_password(req: ResetPasswordRequest):
+def reset_password(req: ResetPasswordRequest):
     if len(req.password) < 8:
         raise HTTPException(400, "Password must be at least 8 characters")
 
-    conn = get_db()
-    rows = conn.run(
-        "SELECT * FROM password_resets WHERE token = :token AND used = 0 AND expires_at > :now",
-        token=req.token, now=datetime.now(timezone.utc).isoformat(),
-    )
-    cols = [c["name"] for c in conn.columns]
-    conn.close()
+    with db_connection() as conn:
+        rows = conn.run(
+            "SELECT * FROM password_resets WHERE token = :token AND used = 0 AND expires_at > :now",
+            token=req.token, now=datetime.now(timezone.utc).isoformat(),
+        )
+        cols = [c["name"] for c in conn.columns]
 
     reset_row = _row_to_dict(cols, rows[0] if rows else None)
     if not reset_row:
@@ -574,27 +589,25 @@ async def reset_password(req: ResetPasswordRequest):
 
     new_hash = hash_password(req.password)
     now = datetime.now(timezone.utc).isoformat()
-    conn = get_db()
-    conn.run("UPDATE users SET password_hash = :h, updated_at = :now WHERE id = :uid", h=new_hash, now=now, uid=reset_row["user_id"])
-    conn.run("UPDATE password_resets SET used = 1 WHERE token = :token", token=req.token)
-    conn.close()
+    with db_connection() as conn:
+        conn.run("UPDATE users SET password_hash = :h, updated_at = :now WHERE id = :uid", h=new_hash, now=now, uid=reset_row["user_id"])
+        conn.run("UPDATE password_resets SET used = 1 WHERE token = :token", token=req.token)
 
     return {"success": True, "message": "Password updated. You can now log in."}
 
 
 @app.get("/api/auth/me")
-async def me(request: Request):
+def me(request: Request):
     user = get_current_user(request)
     if not user:
         raise HTTPException(401, "Not authenticated")
 
-    ensure_master_tier(user)
+    user = ensure_master_tier(user)
 
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    conn = get_db()
-    r1 = conn.run("SELECT COUNT(*) FROM usage_log WHERE user_id = :uid AND ts LIKE :today", uid=user["id"], today=f"{today}%")
-    r2 = conn.run("SELECT COUNT(*) FROM usage_log WHERE user_id = :uid", uid=user["id"])
-    conn.close()
+    with db_connection() as conn:
+        r1 = conn.run("SELECT COUNT(*) FROM usage_log WHERE user_id = :uid AND ts LIKE :today", uid=user["id"], today=f"{today}%")
+        r2 = conn.run("SELECT COUNT(*) FROM usage_log WHERE user_id = :uid", uid=user["id"])
     usage_today = r1[0][0] if r1 else 0
     usage_total = r2[0][0] if r2 else 0
 
@@ -616,18 +629,17 @@ async def me(request: Request):
 
 
 @app.post("/api/auth/rotate-key")
-async def rotate_key(request: Request):
+def rotate_key(request: Request):
     user = get_current_user(request)
     if not user:
         raise HTTPException(401, "Not authenticated")
 
     new_key = generate_api_key()
-    conn = get_db()
-    conn.run(
-        "UPDATE users SET api_key = :key, updated_at = :now WHERE id = :uid",
-        key=new_key, now=datetime.now(timezone.utc).isoformat(), uid=user["id"],
-    )
-    conn.close()
+    with db_connection() as conn:
+        conn.run(
+            "UPDATE users SET api_key = :key, updated_at = :now WHERE id = :uid",
+            key=new_key, now=datetime.now(timezone.utc).isoformat(), uid=user["id"],
+        )
     return {"success": True, "api_key": new_key}
 
 
@@ -706,7 +718,7 @@ def _parse_fee_data(chain: str, stats: dict):
 # Gas fee API endpoints
 # ---------------------------------------------------------------------------
 @app.get("/api/gas-fees/latest")
-async def get_latest_fees(request: Request):
+def get_latest_fees(request: Request):
     fees = get_cached_fees()
     api_key = request.headers.get("X-API-Key", "")
     user = get_current_user(request)
@@ -735,7 +747,7 @@ async def get_latest_fees(request: Request):
 
 
 @app.get("/api/gas-fees/cheapest")
-async def get_cheapest(request: Request, limit: int = 5):
+def get_cheapest(request: Request, limit: int = Query(default=5, ge=1, le=50)):
     fees = get_cached_fees()
     user = get_current_user(request)
     api_key = request.headers.get("X-API-Key", "")
@@ -756,7 +768,7 @@ async def get_cheapest(request: Request, limit: int = 5):
 
 
 @app.get("/api/gas-fees/comparison")
-async def get_comparison(request: Request, amount: float = 1000):
+def get_comparison(request: Request, amount: float = Query(default=1000.0, gt=0, le=1_000_000_000)):
     fees = get_cached_fees()
     user = get_current_user(request)
     api_key = request.headers.get("X-API-Key", "")
@@ -796,24 +808,23 @@ async def get_comparison(request: Request, amount: float = 1000):
 # User dashboard data
 # ---------------------------------------------------------------------------
 @app.get("/api/dashboard")
-async def dashboard_data(request: Request):
+def dashboard_data(request: Request):
     user = get_current_user(request)
     if not user:
         raise HTTPException(401, "Not authenticated")
 
-    ensure_master_tier(user)
+    user = ensure_master_tier(user)
 
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     thirty_days_ago = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
 
-    conn = get_db()
-    r1 = conn.run("SELECT COUNT(*) FROM usage_log WHERE user_id = :uid AND ts LIKE :today", uid=user["id"], today=f"{today}%")
-    r2 = conn.run("SELECT COUNT(*) FROM usage_log WHERE user_id = :uid", uid=user["id"])
-    r3 = conn.run(
-        "SELECT DATE(ts) AS day, COUNT(*) AS cnt FROM usage_log WHERE user_id = :uid AND ts > :ago GROUP BY day ORDER BY day",
-        uid=user["id"], ago=thirty_days_ago,
-    )
-    conn.close()
+    with db_connection() as conn:
+        r1 = conn.run("SELECT COUNT(*) FROM usage_log WHERE user_id = :uid AND ts LIKE :today", uid=user["id"], today=f"{today}%")
+        r2 = conn.run("SELECT COUNT(*) FROM usage_log WHERE user_id = :uid", uid=user["id"])
+        r3 = conn.run(
+            "SELECT DATE(ts) AS day, COUNT(*) AS cnt FROM usage_log WHERE user_id = :uid AND ts > :ago GROUP BY day ORDER BY day",
+            uid=user["id"], ago=thirty_days_ago,
+        )
 
     usage_today = r1[0][0] if r1 else 0
     usage_total = r2[0][0] if r2 else 0
@@ -853,7 +864,6 @@ def _verify_square_signature(body: bytes, signature_header: str, notification_ur
     """
     if not SQUARE_WEBHOOK_SIGNATURE_KEY or not signature_header:
         return False
-    import base64
     payload = notification_url.encode("utf-8") + body
     expected = base64.b64encode(
         hmac_lib.new(
@@ -865,31 +875,29 @@ def _verify_square_signature(body: bytes, signature_header: str, notification_ur
     return hmac_lib.compare_digest(expected, signature_header)
 
 
-def _upgrade_user_by_email(email: str, new_tier: str, square_customer_id: Optional[str] = None):
+def _upgrade_user_by_email(email: str, new_tier: str, square_customer_id: Optional[str] = None) -> bool:
     """Find a user by email and upgrade their tier. Returns True if found."""
     if not email:
         return False
-    conn = get_db()
-    rows = conn.run("SELECT id, tier FROM users WHERE email = :email", email=email.lower())
-    cols = [c["name"] for c in conn.columns]
-    conn.close()
+    with db_connection() as conn:
+        rows = conn.run("SELECT id, tier FROM users WHERE email = :email", email=email.lower())
+        cols = [c["name"] for c in conn.columns]
 
     row = _row_to_dict(cols, rows[0] if rows else None)
     if not row:
-        print(f"[FeeScout] Square webhook: no account for {email} — tier upgrade skipped")
+        logger.warning("Square webhook: no account for %s — tier upgrade skipped", email)
         return False
 
     now = datetime.now(timezone.utc).isoformat()
-    conn = get_db()
-    conn.run(
-        """UPDATE users
-           SET tier = :tier, updated_at = :now, subscribed_at = :now2,
-               square_customer_id = COALESCE(:cid, square_customer_id)
-           WHERE id = :uid""",
-        tier=new_tier, now=now, now2=now, cid=square_customer_id, uid=row["id"],
-    )
-    conn.close()
-    print(f"[FeeScout] Upgraded {email} → {new_tier}")
+    with db_connection() as conn:
+        conn.run(
+            """UPDATE users
+               SET tier = :tier, updated_at = :now, subscribed_at = :now2,
+                   square_customer_id = COALESCE(:cid, square_customer_id)
+               WHERE id = :uid""",
+            tier=new_tier, now=now, now2=now, cid=square_customer_id, uid=row["id"],
+        )
+    logger.info("Upgraded %s → %s", email, new_tier)
 
     # Send upgrade confirmation email
     tier_label = new_tier.capitalize()
@@ -917,6 +925,7 @@ def _upgrade_user_by_email(email: str, new_tier: str, square_customer_id: Option
 
 @app.post("/api/webhooks/square")
 async def square_webhook(request: Request):
+    # Must stay async — uses `await request.body()`
     body = await request.body()
     signature = request.headers.get("x-square-hmacsha256-signature", "")
 
@@ -924,10 +933,10 @@ async def square_webhook(request: Request):
     notification_url = str(request.url)
 
     if not SQUARE_WEBHOOK_SIGNATURE_KEY:
-        print("[FeeScout] Square webhook: SQUARE_WEBHOOK_SIGNATURE_KEY not configured — rejected")
+        logger.error("Square webhook: SQUARE_WEBHOOK_SIGNATURE_KEY not configured — rejected")
         raise HTTPException(503, "Webhook not configured")
     if not _verify_square_signature(body, signature, notification_url):
-        print("[FeeScout] Square webhook: invalid signature — rejected")
+        logger.warning("Square webhook: invalid signature — rejected")
         raise HTTPException(403, "Invalid signature")
 
     try:
@@ -936,7 +945,7 @@ async def square_webhook(request: Request):
         raise HTTPException(400, "Invalid JSON")
 
     event_type = payload.get("type", "")
-    print(f"[FeeScout] Square webhook received: {event_type}")
+    logger.info("Square webhook received: %s", event_type)
 
     # ---- payment.completed ------------------------------------------------
     # Fires when a one-time or subscription payment succeeds.
@@ -949,7 +958,7 @@ async def square_webhook(request: Request):
         new_tier = SQUARE_TIER_BY_AMOUNT.get(amount_cents)
         if not new_tier:
             # Unrecognised amount — log and return 200 so Square stops retrying
-            print(f"[FeeScout] Unknown payment amount {amount_cents} cents from {email}")
+            logger.warning("Unknown payment amount %d cents from %s", amount_cents, email)
             return {"received": True}
 
         _upgrade_user_by_email(email, new_tier, customer_id)
@@ -962,7 +971,7 @@ async def square_webhook(request: Request):
         # Square doesn't include email in the subscription event — look it up
         # via a lightweight call to the Customers API if we have the access token.
         # For sandbox we rely on payment.completed covering the same transaction.
-        print(f"[FeeScout] subscription.created for customer {customer_id} (handled via payment.completed)")
+        logger.info("subscription.created for customer %s (handled via payment.completed)", customer_id)
 
     # Always return 200 — Square retries on any non-2xx response
     return {"received": True}
@@ -975,28 +984,30 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def _read_html(filename: str) -> str:
-    path = os.path.join(BASE_DIR, filename)
+    path = os.path.realpath(os.path.join(BASE_DIR, filename))
+    if not path.startswith(os.path.realpath(BASE_DIR)):
+        raise ValueError(f"Path traversal attempt: {filename!r}")
     with open(path, "r", encoding="utf-8") as f:
         return f.read()
 
 
 @app.get("/")
-async def serve_index():
+def serve_index():
     return HTMLResponse(content=_read_html("index.html"))
 
 
 @app.get("/dashboard")
-async def serve_dashboard():
+def serve_dashboard():
     return HTMLResponse(content=_read_html("dashboard.html"))
 
 
 @app.get("/privacy-policy")
-async def serve_privacy():
+def serve_privacy():
     return HTMLResponse(content=_read_html("privacy-policy.html"))
 
 
 @app.get("/feescoutlogo.png")
-async def serve_logo():
+def serve_logo():
     return FileResponse(os.path.join(BASE_DIR, "feescoutlogo.png"), media_type="image/png")
 
 
@@ -1071,7 +1082,7 @@ async def robots():
 # Health Check
 # ---------------------------------------------------------------------------
 @app.get("/api/health")
-async def health_check():
+def health_check():
     """
     Health check endpoint.
     Returns 'healthy' if DB is connected, 'degraded' if no DB is configured,
