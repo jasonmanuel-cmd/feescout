@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Docs — FeeScout</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --green: #00D68F; --green-dark: #00B87A;
+            --bg: #07070C; --card: #111118; --border: #1A1A26;
+            --text: #FFFFFF; --text-sec: #8A8A9A; --text-muted: #4A4A5A;
+            --blue: #3B82F6;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+        .container { max-width: 900px; margin: 0 auto; padding: 0 20px; }
+        nav { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 1px solid var(--border); }
+        nav a { color: var(--green); text-decoration: none; font-weight: 600; font-size: 18px; }
+        .api-docs { padding: 40px 0 80px; }
+        h1 { font-size: 32px; font-weight: 800; margin-bottom: 8px; }
+        .subtitle { color: var(--text-sec); font-size: 16px; margin-bottom: 40px; }
+        .api-section { margin-bottom: 48px; }
+        .api-section h2 { font-size: 22px; font-weight: 700; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+        .api-endpoint { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+        .api-endpoint-header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
+        .api-method { padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+        .api-method.get { background: rgba(59,130,246,0.2); color: var(--blue); }
+        .api-method.post { background: rgba(0,214,143,0.2); color: var(--green); }
+        .api-path { font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--text); }
+        .api-desc { color: var(--text-sec); font-size: 14px; margin-bottom: 12px; }
+        .api-code { background: #0a0a12; border: 1px solid var(--border); border-radius: 8px; padding: 16px; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.7; color: #e2e8f0; white-space: pre; }
+        .api-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin: 16px 0 8px; }
+        .auth-box { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.2); border-radius: 8px; padding: 16px; margin-bottom: 32px; }
+        .auth-box h3 { font-size: 14px; font-weight: 700; color: var(--blue); margin-bottom: 8px; }
+        .auth-box p { color: var(--text-sec); font-size: 14px; }
+        .auth-box code { font-family: 'JetBrains Mono', monospace; color: var(--green); font-size: 13px; }
+        footer { padding: 40px 0; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        footer p { color: var(--text-muted); font-size: 13px; }
+        footer a { color: var(--text-sec); text-decoration: none; font-size: 13px; margin-left: 24px; }
+        @media (max-width: 768px) {
+            .api-endpoint-header { flex-direction: column; align-items: flex-start; }
+            footer { flex-direction: column; gap: 12px; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <nav>
+        <a href="/">← FeeScout</a>
+        <a href="/#pricing" style="color:var(--text-sec);font-size:14px;">Pricing</a>
+    </nav>
+
+    <div class="api-docs">
+        <h1>📡 API Documentation</h1>
+        <p class="subtitle">Real-time gas fee data for 41+ blockchains. Simple REST API, JSON responses, no SDK required.</p>
+
+        <div class="auth-box">
+            <h3>🔑 Authentication</h3>
+            <p>Sign up for a free account to get your API key. Pass it in the header:</p>
+            <p style="margin-top:8px;"><code>X-API-Key: fs_your_api_key_here</code></p>
+            <p style="margin-top:8px;">Free tier: 100 calls/day. <a href="/#pricing" style="color:var(--green);">Upgrade →</a></p>
+        </div>
+
+        <!-- Public Endpoints -->
+        <div class="api-section">
+            <h2>Gas Fee Endpoints</h2>
+
+            <!-- GET latest -->
+            <div class="api-endpoint">
+                <div class="api-endpoint-header">
+                    <span class="api-method get">GET</span>
+                    <span class="api-path">/api/gas-fees/latest</span>
+                </div>
+                <p class="api-desc">Get the latest gas fees for all tracked blockchains. Returns fee data in USD and native token amounts. Data refreshes every 60 seconds.</p>
+                <div class="api-label">Example Request (curl)</div>
+                <div class="api-code">curl -s "https://feescout.bond/api/gas-fees/latest" \
+  -H "X-API-Key: fs_your_key_here"</div>
+                <div class="api-label">Example Request (Python)</div>
+                <div class="api-code"><span class="kw">import</span> requests
+
+resp = requests.get(
+    <span class="str">"https://feescout.bond/api/gas-fees/latest"</span>,
+    headers={<span class="str">"X-API-Key"</span>: <span class="str">"fs_your_key_here"</span>}
+)
+data = resp.json()
+<span class="kw">for</span> chain <span class="kw">in</span> data[<span class="str">"data"</span>]:
+    <span class="kw">print</span>(<span class="str">f"{chain['chain']}: ${chain['fee_usd']}"</span>)</div>
+                <div class="api-label">Example Request (JavaScript)</div>
+                <div class="api-code"><span class="kw">const</span> resp = <span class="kw">await</span> fetch(
+  <span class="str">"https://feescout.bond/api/gas-fees/latest"</span>,
+  { headers: { <span class="str">"X-API-Key"</span>: <span class="str">"fs_your_key_here"</span> } }
+);
+<span class="kw">const</span> data = <span class="kw">await</span> resp.json();
+data.data.forEach(chain => {
+  console.log(<span class="str">`${chain.chain}: $${chain.fee_usd}`</span>);
+});</div>
+                <div class="api-label">Example Response</div>
+                <div class="api-code">{
+  <span class="str">"success"</span>: <span class="kw">true</span>,
+  <span class="str">"count"</span>: <span class="num">41</span>,
+  <span class="str">"data"</span>: [
+    {
+      <span class="str">"chain"</span>: <span class="str">"ethereum"</span>,
+      <span class="str">"fee_usd"</span>: <span class="num">12.50</span>,
+      <span class="str">"fee_native"</span>: <span class="num">0.0042</span>,
+      <span class="str">"fee_type"</span>: <span class="str">"avg_usd"</span>,
+      <span class="str">"timestamp"</span>: <span class="str">"2026-05-29T21:00:00+00:00"</span>
+    },
+    {
+      <span class="str">"chain"</span>: <span class="str">"polygon"</span>,
+      <span class="str">"fee_usd"</span>: <span class="num">0.003</span>,
+      <span class="str">"fee_native"</span>: <span class="num">0.0012</span>,
+      <span class="str">"fee_type"</span>: <span class="str">"avg_usd"</span>,
+      <span class="str">"timestamp"</span>: <span class="str">"2026-05-29T21:00:00+00:00"</span>
+    }
+  ],
+  <span class="str">"updated_at"</span>: <span class="str">"2026-05-29T21:00:00+00:00"</span>
+}</div>
+            </div>
+
+            <!-- GET cheapest -->
+            <div class="api-endpoint">
+                <div class="api-endpoint-header">
+                    <span class="api-method get">GET</span>
+                    <span class="api-path">/api/gas-fees/cheapest</span>
+                </div>
+                <p class="api-desc">Get only the cheapest chains. Use the <code>limit</code> parameter to control how many results you get (default 5, max 41).</p>
+                <div class="api-label">Query Parameters</div>
+                <div class="api-code"><span class="com"># limit (optional): Number of results to return. Default: 5, Max: 41</span></div>
+                <div class="api-label">Example Request</div>
+                <div class="api-code"><span class="com"># curl</span>
+curl -s "https://feescout.bond/api/gas-fees/cheapest?limit=3" \
+  -H "X-API-Key: fs_your_key_here"
+
+<span class="com"># Python</span>
+<span class="kw">import</span> requests
+resp = requests.get(
+    <span class="str">"https://feescout.bond/api/gas-fees/cheapest"</span>,
+    params={<span class="str">"limit"</span>: <span class="num">3</span>},
+    headers={<span class="str">"X-API-Key"</span>: <span class="str">"fs_your_key"</span>}
+)
+
+<span class="com"># JavaScript</span>
+<span class="kw">const</span> resp = <span class="kw">await</span> fetch(
+  <span class="str">"https://feescout.bond/api/gas-fees/cheapest?limit=3"</span>,
+  { headers: { <span class="str">"X-API-Key"</span>: <span class="str">"fs_your_key"</span> } }
+);</div>
+            </div>
+
+            <!-- GET comparison -->
+            <div class="api-endpoint">
+                <div class="api-endpoint-header">
+                    <span class="api-method get">GET</span>
+                    <span class="api-path">/api/gas-fees/comparison</span>
+                </div>
+                <p class="api-desc">Get a side-by-side comparison of fees across all chains with savings data vs Ethereum. Perfect for dashboards and decision-making tools.</p>
+                <div class="api-label">Example Request</div>
+                <div class="api-code">curl -s "https://feescout.bond/api/gas-fees/comparison" \
+  -H "X-API-Key: fs_your_key_here"</div>
+            </div>
+
+            <!-- GET health -->
+            <div class="api-endpoint">
+                <div class="api-endpoint-header">
+                    <span class="api-method get">GET</span>
+                    <span class="api-path">/api/health</span>
+                </div>
+                <p class="api-desc">Health check endpoint. Returns API status, version, and uptime info. No authentication required.</p>
+                <div class="api-label">Example Response</div>
+                <div class="api-code">{
+  <span class="str">"status"</span>: <span class="str">"healthy"</span>,
+  <span class="str">"version"</span>: <span class="str">"2.1.0"</span>,
+  <span class="str">"chains_tracked"</span>: <span class="num">41</span>
+}</div>
+            </div>
+        </div>
+
+        <!-- Auth Endpoints -->
+        <div class="api-section">
+            <h2>Account Endpoints</h2>
+
+            <div class="api-endpoint">
+                <div class="api-endpoint-header">
+                    <span class="api-method post">POST</span>
+                    <span class="api-path">/api/auth/signup</span>
+                </div>
+                <p class="api-desc">Create a free account. Returns an API key immediately — start making requests in under 30 seconds.</p>
+                <div class="api-label">Example Request</div>
+                <div class="api-code">curl -X POST "https://feescout.bond/api/auth/signup" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "you@example.com", "password": "securepassword"}'</div>
+                <div class="api-label">Response</div>
+                <div class="api-code">{
+  <span class="str">"success"</span>: <span class="kw">true</span>,
+  <span class="str">"api_key"</span>: <span class="str">"fs_aBcDeFgHiJkLmNoPqRsTuVwXyZ"</span>,
+  <span class="str">"tier"</span>: <span class="str">"free"</span>
+}</div>
+            </div>
+
+            <div class="api-endpoint">
+                <div class="api-endpoint-header">
+                    <span class="api-method post">POST</span>
+                    <span class="api-path">/api/auth/login</span>
+                </div>
+                <p class="api-desc">Log in to get your API key if you've lost it.</p>
+                <div class="api-label">Example Request</div>
+                <div class="api-code">curl -X POST "https://feescout.bond/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "you@example.com", "password": "securepassword"}'</div>
+            </div>
+
+            <div class="api-endpoint">
+                <div class="api-endpoint-header">
+                    <span class="api-method post">POST</span>
+                    <span class="api-path">/api/alerts/subscribe</span>
+                </div>
+                <p class="api-desc">Subscribe to free daily fee alerts via email. We'll send you the cheapest chain of the day, every morning. No credit card required.</p>
+                <div class="api-label">Example Request</div>
+                <div class="api-code">curl -X POST "https://feescout.bond/api/alerts/subscribe" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "you@example.com"}'</div>
+                <div class="api-label">Response</div>
+                <div class="api-code">{
+  <span class="str">"success"</span>: <span class="kw">true</span>,
+  <span class="str">"message"</span>: <span class="str">"Check your inbox to confirm."</span>
+}</div>
+            </div>
+        </div>
+
+        <!-- Rate Limits -->
+        <div class="api-section">
+            <h2>Rate Limits</h2>
+            <div class="api-endpoint">
+                <p class="api-desc" style="margin-bottom:12px;">Every plan has a daily request limit. When you exceed it, you'll get a <code>429</code> response. Check your remaining quota in the dashboard.</p>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px;">
+                    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;text-align:center;">
+                        <div style="font-size:12px;color:var(--text-muted);font-weight:700;text-transform:uppercase;">Free</div>
+                        <div style="font-size:24px;font-weight:800;color:var(--green);">100</div>
+                        <div style="font-size:12px;color:var(--text-sec);">calls/day</div>
+                    </div>
+                    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;text-align:center;">
+                        <div style="font-size:12px;color:var(--text-muted);font-weight:700;text-transform:uppercase;">Hobbyist</div>
+                        <div style="font-size:24px;font-weight:800;color:var(--green);">10K</div>
+                        <div style="font-size:12px;color:var(--text-sec);">calls/day · $39/mo</div>
+                    </div>
+                    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;text-align:center;">
+                        <div style="font-size:12px;color:var(--text-muted);font-weight:700;text-transform:uppercase;">Trader</div>
+                        <div style="font-size:24px;font-weight:800;color:var(--green);">100K</div>
+                        <div style="font-size:12px;color:var(--text-sec);">calls/day · $99/mo</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>© 2025 FeeScout. All rights reserved.</p>
+        <div>
+            <a href="/">Home</a>
+            <a href="/privacy-policy">Privacy</a>
+            <a href="/terms">Terms</a>
+            <a href="mailto:support@feescout.com">Support</a>
+        </div>
+    </footer>
+</div>
+</body>
+</html>

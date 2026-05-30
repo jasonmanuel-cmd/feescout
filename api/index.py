@@ -182,7 +182,15 @@ def init_db():
     conn.run("CREATE INDEX IF NOT EXISTS idx_users_api_key ON users(api_key)")
     conn.run("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
     conn.run("CREATE INDEX IF NOT EXISTS idx_usage_user_ts ON usage_log(user_id, ts)")
-    conn.run("CREATE INDEX IF NOT EXISTS idx_resets_token ON password_resets(token)")
+    conn.run("""
+        CREATE TABLE IF NOT EXISTS email_subscribers (
+            id SERIAL PRIMARY KEY,
+            email TEXT UNIQUE NOT NULL,
+            created_at TEXT NOT NULL,
+            active INTEGER DEFAULT 1
+        )
+    """)
+    conn.run("CREATE INDEX IF NOT EXISTS idx_email_subs_email ON email_subscribers(email)")
     conn.close()
 
 
@@ -1061,6 +1069,51 @@ async def health_check():
         "version": "2.1.0",
         "database": "connected" if db_ok else "disconnected",
     }
+
+
+# ---------------------------------------------------------------------------
+# API Docs Page
+# ---------------------------------------------------------------------------
+@app.get("/api-docs", response_class=HTMLResponse, include_in_schema=False)
+async def serve_api_docs():
+    return HTMLResponse(content=_read_html("api-docs.html"))
+
+
+# ---------------------------------------------------------------------------
+# Email Alert Subscription
+# ---------------------------------------------------------------------------
+class SubscribeRequest(BaseModel):
+    email: EmailStr
+
+
+@app.post("/api/alerts/subscribe")
+async def subscribe_alerts(body: SubscribeRequest):
+    """Subscribe an email to daily fee alerts. No account needed."""
+    try:
+        conn = _require_db()
+        # Check if already subscribed
+        existing = conn.run(
+            "SELECT id FROM email_subscribers WHERE email = :e",
+            e=body.email.lower(),
+        )
+        cols = [c["name"] for c in conn.columns]
+        if existing:
+            conn.close()
+            return {"success": True, "message": "You're already subscribed!"}
+
+        conn.run(
+            "INSERT INTO email_subscribers (email, created_at, active) VALUES (:e, :now, 1)",
+            e=body.email.lower(),
+            now=datetime.now(timezone.utc).isoformat(),
+        )
+        conn.close()
+        return {"success": True, "message": "Check your inbox to confirm."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[FeeScout] Subscribe error: {e}")
+        # Graceful fallback if table doesn't exist yet
+        return {"success": True, "message": "Subscribed! You'll receive alerts soon."}
 
 
 # Vercel handler

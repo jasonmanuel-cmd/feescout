@@ -157,6 +157,115 @@
         .cta h2 { font-size: 40px; font-weight: 800; margin-bottom: 16px; }
         .cta p { color: var(--text-sec); font-size: 18px; margin-bottom: 32px; }
         
+        /* Email Capture Section */
+        .email-capture {
+            padding: 60px 0;
+            background: linear-gradient(135deg, var(--card) 0%, rgba(0, 214, 143, 0.05) 100%);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+        }
+        .email-inner {
+            display: flex;
+            align-items: center;
+            gap: 48px;
+        }
+        .email-left { flex: 1; }
+        .email-left h2 { font-size: 28px; font-weight: 800; margin-bottom: 8px; }
+        .email-left p { color: var(--text-sec); font-size: 16px; }
+        .email-right { flex: 1; }
+        .email-form {
+            display: flex;
+            gap: 12px;
+        }
+        .email-form input {
+            flex: 1;
+            padding: 14px 20px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            background: var(--card);
+            color: var(--text);
+            font-size: 16px;
+            font-family: 'Inter', sans-serif;
+        }
+        .email-form input:focus {
+            border-color: var(--green);
+            outline: none;
+        }
+        .email-form input::placeholder { color: var(--text-muted); }
+        .email-form .btn { white-space: nowrap; }
+        .email-success {
+            color: var(--green);
+            font-weight: 600;
+            margin-top: 12px;
+            font-size: 15px;
+        }
+        .email-note {
+            color: var(--text-muted);
+            font-size: 12px;
+            margin-top: 8px;
+        }
+
+        @media (max-width: 768px) {
+            .email-inner { flex-direction: column; gap: 24px; }
+            .email-left h2 { font-size: 22px; }
+            .email-form { flex-direction: column; }
+        }
+
+        /* API Docs Page */
+        .api-docs { padding: 40px 0; }
+        .api-section { margin-bottom: 48px; }
+        .api-section h2 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        .api-endpoint {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        .api-endpoint-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+        .api-method {
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .api-method.get { background: rgba(59, 130, 246, 0.2); color: var(--blue); }
+        .api-method.post { background: rgba(0, 214, 143, 0.2); color: var(--green); }
+        .api-path {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            color: var(--text);
+        }
+        .api-desc { color: var(--text-sec); font-size: 14px; margin-bottom: 12px; }
+        .api-code {
+            background: #0a0a12;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            overflow-x: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #e2e8f0;
+            white-space: pre;
+        }
+        .api-code .kw { color: #c084fc; }
+        .api-code .str { color: #86efac; }
+        .api-code .num { color: #fbbf24; }
+        .api-code .com { color: #4a4a5a; }
+
         /* Footer */
         footer {
             padding: 40px 0; border-top: 1px solid var(--border);
@@ -372,16 +481,37 @@
     <section class="cta">
         <h2>Ready to Stop Overpaying?</h2>
         <p>Join thousands of crypto traders saving money on every transaction.</p>
-        <a href="https://square.link/u/YjHtGg2s" class="btn btn-primary" style="font-size:18px;padding:16px 40px;">Start Your Free Trial →</a>
+        <a href="#pricing" class="btn btn-primary" style="font-size:18px;padding:16px 40px;">Start Your Free Trial →</a>
         <p style="margin-top:16px;font-size:14px;color:var(--text-muted);">No credit card required. Cancel anytime.</p>
     </section>
-    
+
+    <!-- Email Capture Section -->
+    <section class="email-capture" id="alerts">
+        <div class="email-inner">
+            <div class="email-left">
+                <h2>🔔 Get Free Fee Alerts</h2>
+                <p>Enter your email. We'll send you the cheapest chain of the day, every morning. No spam. Unsubscribe anytime.</p>
+            </div>
+            <div class="email-right">
+                <form id="emailForm" class="email-form">
+                    <input type="email" id="emailInput" placeholder="your@email.com" required>
+                    <button type="submit" class="btn btn-primary" id="emailBtn">Get Alerts Free</button>
+                </form>
+                <p id="emailSuccess" class="email-success" style="display:none;">
+                    ✓ You're in! Check your inbox.
+                </p>
+                <p class="email-note">Free forever. No credit card. We send one email per day max.</p>
+            </div>
+        </div>
+    </section>
+
     <!-- Footer -->
     <footer>
         <p>© 2025 FeeScout. All rights reserved.</p>
         <div>
-            <a href="/privacy.html">Privacy</a>
-            <a href="/terms.html">Terms</a>
+            <a href="/privacy-policy">Privacy</a>
+            <a href="/terms">Terms</a>
+            <a href="/api-docs">API Docs</a>
             <a href="mailto:support@feescout.com">Support</a>
         </div>
     </footer>
@@ -413,6 +543,34 @@ async function fetchFees() {
 
 fetchFees();
 setInterval(fetchFees, 60000);
+
+// Email capture form
+document.getElementById('emailForm')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const email = document.getElementById('emailInput').value.trim();
+    const btn = document.getElementById('emailBtn');
+    if (!email) return;
+    btn.textContent = 'Submitting...';
+    btn.disabled = true;
+    try {
+        const resp = await fetch('/api/alerts/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            document.getElementById('emailForm').style.display = 'none';
+            document.getElementById('emailSuccess').style.display = 'block';
+        } else {
+            btn.textContent = 'Get Alerts Free';
+            btn.disabled = false;
+        }
+    } catch {
+        btn.textContent = 'Get Alerts Free';
+        btn.disabled = false;
+    }
+});
 </script>
 
 </body>
