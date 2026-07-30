@@ -21,6 +21,16 @@ from urllib.parse import urlparse
 
 import pg8000.native
 import requests
+
+try:
+    # Local development: load variables from a .env file if present.
+    # On Vercel the .env is absent (gitignored) and real env vars are used,
+    # so this is a harmless no-op in production.
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except ImportError:
+    pass
 from fastapi import FastAPI, Query, Response, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, FileResponse

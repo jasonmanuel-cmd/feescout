@@ -1,0 +1,452 @@
+<!-- 
+  FeeScout Pricing A/B Test - Drop-in Replacement
+  ================================================
+  Replace the existing pricing section in index.html with this code.
+  Includes: A/B test engine, Variant A (current) and Variant B (test),
+  monthly/annual toggle, comparison table, and conversion tracking.
+  
+  VARIANT A (Control): Free / $39 Hobbyist / $99 Trader (3 tiers)
+  VARIANT B (Test):    Free / $19 Starter / $49 Pro / $149 Enterprise (4 tiers)
+  
+  Hypothesis: Lower entry price ($19 vs $39) with 4-tier structure
+  will increase conversions while capturing more revenue from power users.
+-->
+
+<style>
+/* ===== A/B Test Pricing Styles ===== */
+.ab-pricing-section { margin-top: 56px; margin-bottom: 56px; }
+.ab-pricing-section h2 {
+    text-align: center;
+    color: var(--text-primary);
+    font-size: 40px;
+    margin-bottom: 12px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+}
+.ab-pricing-section .ab-subtitle {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 18px;
+    margin-bottom: 32px;
+}
+
+/* Toggle */
+.ab-pricing-toggle {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 36px;
+}
+.ab-pricing-toggle span { font-size: 14px; color: var(--text-secondary); font-weight: 500; }
+.ab-pricing-toggle span.active { color: var(--text-primary); }
+.ab-toggle-switch {
+    width: 48px; height: 26px;
+    background: var(--charcoal-hover);
+    border: 1px solid var(--charcoal-border);
+    border-radius: 13px;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.3s;
+}
+.ab-toggle-switch::after {
+    content: '';
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 18px; height: 18px;
+    background: var(--electric-green);
+    border-radius: 50%;
+    transition: transform 0.3s;
+}
+.ab-toggle-switch.annual::after { transform: translateX(22px); }
+.ab-save-badge {
+    background: rgba(0, 214, 143, 0.15);
+    color: var(--electric-green);
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+/* Grid */
+.ab-pricing-grid {
+    display: grid;
+    gap: 20px;
+    margin-bottom: 48px;
+}
+.ab-pricing-grid.grid-3 { grid-template-columns: repeat(3, 1fr); }
+.ab-pricing-grid.grid-4 { grid-template-columns: repeat(4, 1fr); }
+
+.ab-pricing-card {
+    background: rgba(17, 17, 24, 0.7);
+    border: 1px solid var(--charcoal-border);
+    border-radius: 14px;
+    padding: 28px 24px;
+    transition: all 0.3s;
+    position: relative;
+}
+.ab-pricing-card:hover { transform: translateY(-6px); border-color: var(--text-muted); }
+.ab-pricing-card.featured {
+    border: 2px solid var(--electric-green);
+    transform: scale(1.03);
+}
+.ab-pricing-card.featured:hover { box-shadow: 0 20px 60px rgba(0, 214, 143, 0.12); }
+.ab-popular-badge {
+    position: absolute; top: -12px; right: 20px;
+    background: var(--electric-green); color: #000;
+    padding: 4px 16px; border-radius: 16px;
+    font-weight: 700; font-size: 11px; text-transform: uppercase;
+}
+.ab-pricing-card h3 { color: var(--text-primary); font-size: 18px; margin-bottom: 2px; font-weight: 700; }
+.ab-plan-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 10px; }
+.ab-price {
+    font-size: 42px; font-weight: 800;
+    color: var(--electric-green);
+    margin: 8px 0;
+    font-family: 'JetBrains Mono', monospace;
+}
+.ab-price .ab-period { font-size: 15px; color: var(--text-muted); font-weight: 400; }
+.ab-price .ab-original {
+    font-size: 18px; color: var(--text-muted);
+    text-decoration: line-through; margin-right: 8px; font-weight: 400;
+}
+.ab-features { list-style: none; margin: 16px 0; }
+.ab-features li {
+    padding: 6px 0;
+    color: var(--text-secondary);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+}
+.ab-features li::before {
+    content: "✓"; color: var(--electric-green);
+    font-weight: bold; margin-right: 10px; font-size: 14px;
+}
+.ab-features li.not-included { color: var(--text-muted); }
+.ab-features li.not-included::before { content: "—"; color: var(--text-muted); }
+
+/* Comparison Table */
+.ab-comparison { margin: 48px 0; }
+.ab-comparison h2 { text-align: center; font-size: 28px; margin-bottom: 24px; font-weight: 700; }
+.ab-comparison-table {
+    background: rgba(17, 17, 24, 0.7);
+    border: 1px solid var(--charcoal-border);
+    border-radius: 14px;
+    overflow: hidden;
+}
+.ab-comparison-table table { width: 100%; border-collapse: collapse; }
+.ab-comparison-table th {
+    background: rgba(0, 214, 143, 0.1);
+    color: var(--electric-green);
+    padding: 12px 14px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--charcoal-border);
+}
+.ab-comparison-table th:first-child { text-align: left; }
+.ab-comparison-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--charcoal-border);
+    color: var(--text-secondary);
+    font-size: 13px;
+    text-align: center;
+}
+.ab-comparison-table td:first-child { text-align: left; color: var(--text-primary); font-weight: 500; }
+.ab-comparison-table tr:hover { background: var(--charcoal-hover); }
+.ab-check { color: var(--electric-green); font-weight: bold; }
+.ab-cross { color: var(--text-muted); }
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .ab-pricing-grid.grid-4 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 768px) {
+    .ab-pricing-grid.grid-3,
+    .ab-pricing-grid.grid-4 { grid-template-columns: 1fr; max-width: 400px; margin-left: auto; margin-right: auto; }
+    .ab-pricing-card.featured { transform: none; }
+}
+</style>
+
+<div class="ab-pricing-section" id="pricing">
+    <h2 id="ab-hero-title">Simple, Transparent Pricing</h2>
+    <p class="ab-subtitle" id="ab-hero-subtitle">Start free. Upgrade when you need more. No hidden fees, no surprises.</p>
+
+    <!-- Billing Toggle -->
+    <div class="ab-pricing-toggle">
+        <span id="ab-monthly-label" class="active">Monthly</span>
+        <div class="ab-toggle-switch" id="ab-billing-toggle" onclick="abToggleBilling()"></div>
+        <span id="ab-annual-label">Annual</span>
+        <span class="ab-save-badge">Save 20%</span>
+    </div>
+
+    <!-- Pricing Cards -->
+    <div id="ab-pricing-grid" class="ab-pricing-grid"></div>
+
+    <!-- Comparison Table -->
+    <div class="ab-comparison">
+        <h2>Compare All Features</h2>
+        <div class="ab-comparison-table">
+            <table id="ab-comparison-table"></table>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    'use strict';
+
+    // ===== A/B TEST ENGINE =====
+    var TEST_NAME = 'pricing_2026_06';
+    var VARIANT_KEY = 'feescout_ab_' + TEST_NAME;
+    var STATS_KEY = 'feescout_ab_stats_' + TEST_NAME;
+
+    function getVariant() {
+        var stored = localStorage.getItem(VARIANT_KEY);
+        if (stored === 'A' || stored === 'B') return stored;
+        var v = Math.random() < 0.5 ? 'A' : 'B';
+        localStorage.setItem(VARIANT_KEY, v);
+        return v;
+    }
+    var currentVariant = getVariant();
+    var isAnnual = false;
+
+    function getStats() {
+        try {
+            var raw = localStorage.getItem(STATS_KEY);
+            return raw ? JSON.parse(raw) : { views: 0, ctaClicks: 0, signupStarts: 0, signupCompletes: 0 };
+        } catch(e) { return { views: 0, ctaClicks: 0, signupStarts: 0, signupCompletes: 0 }; }
+    }
+    function saveStats(s) { localStorage.setItem(STATS_KEY, JSON.stringify(s)); }
+    function track(event) {
+        var s = getStats();
+        if (event === 'view') s.views++;
+        if (event === 'cta_click') s.ctaClicks++;
+        if (event === 'signup_start') s.signupStarts++;
+        if (event === 'signup_complete') s.signupCompletes++;
+        saveStats(s);
+        var detail = { test: TEST_NAME, variant: currentVariant, event: event, stats: s, ts: Date.now() };
+        window.dispatchEvent(new CustomEvent('feescout_ab', { detail: detail }));
+        if (window.dataLayer) window.dataLayer.push({ event: 'feescout_ab_test', ab_test: TEST_NAME, ab_variant: currentVariant, ab_event: event });
+        if (window.plausible) window.plausible('AB: ' + TEST_NAME, { props: { variant: currentVariant, event: event } });
+    }
+    track('view');
+
+    // Expose API
+    window.feeScoutAB = {
+        variant: currentVariant, test: TEST_NAME, track: track, getStats: getStats,
+        reset: function() { localStorage.removeItem(VARIANT_KEY); localStorage.removeItem(STATS_KEY); location.reload(); }
+    };
+
+    // Auto-track CTAs
+    document.addEventListener('click', function(e) {
+        var t = e.target.closest('a, button');
+        if (!t) return;
+        var cls = (t.className || '').toLowerCase();
+        if (cls.indexOf('cta-button') !== -1 || cls.indexOf('square-subscribe') !== -1) track('cta_click');
+    });
+
+    // ===== PRICING DATA =====
+    var variantA = {
+        heroTitle: 'Simple, Transparent Pricing',
+        heroSubtitle: 'Start free. Upgrade when you need more. No hidden fees, no surprises.',
+        gridClass: 'grid-3',
+        plans: [
+            {
+                name: 'Free', desc: 'For trying out FeeScout',
+                priceMo: 0, priceAnn: 0, featured: false, badge: null,
+                features: [
+                    { text: 'Top 5 cheapest chains', on: true },
+                    { text: '100 API calls/day', on: true },
+                    { text: '5-minute data refresh', on: true },
+                    { text: 'Basic savings calculator', on: true },
+                    { text: 'Community support', on: true },
+                    { text: 'All 41 chains', on: false },
+                    { text: 'Email alerts', on: false },
+                    { text: 'API access', on: false },
+                ],
+                cta: 'Get Started Free', ctaCls: 'secondary', href: '#'
+            },
+            {
+                name: 'Hobbyist', desc: 'For active crypto users',
+                priceMo: 39, priceAnn: 31, featured: true, badge: 'Most Popular',
+                features: [
+                    { text: 'All 41 chains ranked', on: true },
+                    { text: '10,000 API calls/day', on: true },
+                    { text: '60-second data refresh', on: true },
+                    { text: 'Email alerts (3 thresholds)', on: true },
+                    { text: '30-day historical data', on: true },
+                    { text: 'Priority email support', on: true },
+                    { text: 'Real-time WebSocket', on: false },
+                    { text: 'Telegram bot', on: false },
+                ],
+                cta: 'Subscribe — $39/mo', ctaCls: '', href: 'https://square.link/u/YjHtGg2s'
+            },
+            {
+                name: 'Trader', desc: 'For power users & teams',
+                priceMo: 99, priceAnn: 79, featured: false, badge: null,
+                features: [
+                    { text: 'Real-time WebSocket feed', on: true },
+                    { text: '100,000 API calls/day', on: true },
+                    { text: '6-month historical data', on: true },
+                    { text: 'Telegram bot integration', on: true },
+                    { text: 'Webhook alerts (unlimited)', on: true },
+                    { text: 'Priority support', on: true },
+                    { text: 'Custom integrations', on: false },
+                    { text: 'White-label option', on: false },
+                ],
+                cta: 'Subscribe — $99/mo', ctaCls: 'secondary', href: 'https://square.link/u/bW26nrZE'
+            }
+        ]
+    };
+
+    var variantB = {
+        heroTitle: 'Find Your Perfect Plan',
+        heroSubtitle: 'From free to enterprise. Every plan includes real-time data from 41+ blockchains.',
+        gridClass: 'grid-4',
+        plans: [
+            {
+                name: 'Free', desc: 'Try it out, no card needed',
+                priceMo: 0, priceAnn: 0, featured: false, badge: null,
+                features: [
+                    { text: 'Top 5 cheapest chains', on: true },
+                    { text: '100 API calls/day', on: true },
+                    { text: '5-minute data refresh', on: true },
+                    { text: 'Basic savings calculator', on: true },
+                    { text: 'Community support', on: true },
+                    { text: 'All 41 chains', on: false },
+                    { text: 'Email alerts', on: false },
+                    { text: 'Priority support', on: false },
+                ],
+                cta: 'Get Started Free', ctaCls: 'secondary', href: '#'
+            },
+            {
+                name: 'Starter', desc: 'For casual crypto users',
+                priceMo: 19, priceAnn: 15, featured: false, badge: null,
+                features: [
+                    { text: 'All 41 chains ranked', on: true },
+                    { text: '2,500 API calls/day', on: true },
+                    { text: '2-minute data refresh', on: true },
+                    { text: 'Email alerts (1 threshold)', on: true },
+                    { text: '7-day historical data', on: true },
+                    { text: 'Email support', on: true },
+                    { text: 'Real-time WebSocket', on: false },
+                    { text: 'Telegram bot', on: false },
+                ],
+                cta: 'Subscribe — $19/mo', ctaCls: 'secondary', href: '#'
+            },
+            {
+                name: 'Pro', desc: 'For active traders',
+                priceMo: 49, priceAnn: 39, featured: true, badge: 'Best Value',
+                features: [
+                    { text: 'All 41 chains ranked', on: true },
+                    { text: '50,000 API calls/day', on: true },
+                    { text: '60-second data refresh', on: true },
+                    { text: 'Email alerts (10 thresholds)', on: true },
+                    { text: '90-day historical data', on: true },
+                    { text: 'Telegram bot integration', on: true },
+                    { text: 'Webhook alerts (unlimited)', on: true },
+                    { text: 'Priority support', on: true },
+                ],
+                cta: 'Subscribe — $49/mo', ctaCls: '', href: '#'
+            },
+            {
+                name: 'Enterprise', desc: 'For teams & businesses',
+                priceMo: 149, priceAnn: 119, featured: false, badge: null,
+                features: [
+                    { text: 'Real-time WebSocket feed', on: true },
+                    { text: '500,000 API calls/day', on: true },
+                    { text: 'Unlimited historical data', on: true },
+                    { text: 'Custom alert rules', on: true },
+                    { text: 'Slack + Discord integrations', on: true },
+                    { text: 'Dedicated account manager', on: true },
+                    { text: 'Custom integrations', on: true },
+                    { text: 'White-label option', on: true },
+                ],
+                cta: 'Contact Sales', ctaCls: 'secondary', href: '#'
+            }
+        ]
+    };
+
+    function getPrice(plan) { return isAnnual ? plan.priceAnn : plan.priceMo; }
+
+    function renderPricing() {
+        var data = currentVariant === 'A' ? variantA : variantB;
+        var grid = document.getElementById('ab-pricing-grid');
+        grid.className = 'ab-pricing-grid ' + data.gridClass;
+
+        document.getElementById('ab-hero-title').textContent = data.heroTitle;
+        document.getElementById('ab-hero-subtitle').textContent = data.heroSubtitle;
+
+        var html = '';
+        for (var i = 0; i < data.plans.length; i++) {
+            var p = data.plans[i];
+            var price = getPrice(p);
+            var orig = isAnnual && p.priceMo > 0 ? p.priceMo : null;
+
+            html += '<div class="ab-pricing-card' + (p.featured ? ' featured' : '') + '">';
+            if (p.badge) html += '<span class="ab-popular-badge">' + p.badge + '</span>';
+            html += '<h3>' + p.name + '</h3>';
+            html += '<div class="ab-plan-desc">' + p.desc + '</div>';
+            html += '<div class="ab-price">';
+            if (orig) html += '<span class="ab-original">$' + orig + '</span>';
+            html += '$' + price + '<span class="ab-period">/mo</span></div>';
+            html += '<ul class="ab-features">';
+            for (var j = 0; j < p.features.length; j++) {
+                var f = p.features[j];
+                html += '<li' + (f.on ? '' : ' class="not-included"') + '>' + f.text + '</li>';
+            }
+            html += '</ul>';
+            html += '<a href="' + p.href + '" class="cta-button ' + p.ctaCls + '">' + p.cta + '</a>';
+            html += '</div>';
+        }
+        grid.innerHTML = html;
+
+        // Comparison table
+        var table = document.getElementById('ab-comparison-table');
+        var compFeatures = [
+            'All 41 chains', 'API calls/day', 'Data refresh', 'Historical data',
+            'Email alerts', 'Telegram bot', 'Webhook alerts', 'Priority support'
+        ];
+        var h = '<thead><tr><th>Feature</th>';
+        for (var i = 0; i < data.plans.length; i++) {
+            h += '<th>' + data.plans[i].name + '<br><span style="color:var(--electric-green);font-size:14px;">$' + getPrice(data.plans[i]) + '/mo</span></th>';
+        }
+        h += '</tr></thead><tbody>';
+        for (var r = 0; r < compFeatures.length; r++) {
+            h += '<tr><td>' + compFeatures[r] + '</td>';
+            for (var p2 = 0; p2 < data.plans.length; p2++) {
+                var plan = data.plans[p2];
+                var has = false;
+                for (var f2 = 0; f2 < plan.features.length; f2++) {
+                    if (plan.features[f2].text.toLowerCase().indexOf(compFeatures[r].toLowerCase()) !== -1 && plan.features[f2].on) {
+                        has = true; break;
+                    }
+                }
+                h += '<td>' + (has ? '<span class="ab-check">✓</span>' : '<span class="ab-cross">—</span>') + '</td>';
+            }
+            h += '</tr>';
+        }
+        h += '</tbody>';
+        table.innerHTML = h;
+
+        // Toggle labels
+        document.getElementById('ab-monthly-label').className = isAnnual ? '' : 'active';
+        document.getElementById('ab-annual-label').className = isAnnual ? 'active' : '';
+    }
+
+    window.abToggleBilling = function() {
+        isAnnual = !isAnnual;
+        document.getElementById('ab-billing-toggle').className = isAnnual ? 'ab-toggle-switch annual' : 'ab-toggle-switch';
+        renderPricing();
+    };
+
+    // Initial render
+    renderPricing();
+
+    console.log('[FeeScout AB] "' + TEST_NAME + '" | Variant: ' + currentVariant);
+    console.log('[FeeScout AB] Stats: window.feeScoutAB.getStats() | Reset: window.feeScoutAB.reset()');
+})();
+</script>

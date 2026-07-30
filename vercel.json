@@ -2,10 +2,14 @@
   "builds": [
     { "src": "api/index.py", "use": "@vercel/python" },
     { "src": "*.html", "use": "@vercel/static" },
-    { "src": "*.png", "use": "@vercel/static" }
+    { "src": "*.png", "use": "@vercel/static" },
+    { "src": "sitemap.xml", "use": "@vercel/static" },
+    { "src": "robots.txt", "use": "@vercel/static" }
   ],
   "routes": [
     { "src": "/api/(.*)", "dest": "api/index.py" },
+    { "src": "/sitemap.xml", "dest": "sitemap.xml" },
+    { "src": "/robots.txt", "dest": "robots.txt" },
     { "src": "/", "dest": "index.html" },
     { "src": "/dashboard", "dest": "dashboard.html" },
     { "src": "/privacy-policy", "dest": "privacy-policy.html" },
